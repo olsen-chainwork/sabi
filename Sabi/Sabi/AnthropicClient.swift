@@ -64,7 +64,7 @@ nonisolated enum AnthropicClient {
 
 // MARK: - Wire types
 
-extension AnthropicClient {
+nonisolated extension AnthropicClient {
     struct MessagesRequest: Encodable {
         let model: String
         let maxTokens: Int

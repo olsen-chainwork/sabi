@@ -73,7 +73,9 @@ nonisolated enum Ranker {
     intent. Each element must be an object with exactly two keys:
       - "index": the original 0-based index of the candidate
       - "reason": one short sentence (max 120 chars) explaining why this \
-        candidate matches (or doesn't match) the intent
+        candidate matches (or doesn't match) the intent. The reason must \
+        add information beyond the title — say what specifically connects \
+        this resource to the intent, not just restate what the resource is.
 
     Ranking criteria, in priority order:
       1. Topical specificity — does it address the exact intent, or just \

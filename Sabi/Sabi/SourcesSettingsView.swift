@@ -100,7 +100,7 @@ struct SourcesSettingsView: View {
                 Text(domain)
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(store.isDisabled(domain) ? .tertiary : .primary)
-                    .strikethrough(store.isDisabled(domain), color: .tertiary)
+                    .strikethrough(store.isDisabled(domain))
             }
             .toggleStyle(.switch)
         }
@@ -112,7 +112,7 @@ struct SourcesSettingsView: View {
                 Text(domain)
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(store.isDisabled(domain) ? .tertiary : .primary)
-                    .strikethrough(store.isDisabled(domain), color: .tertiary)
+                    .strikethrough(store.isDisabled(domain))
             }
             .toggleStyle(.switch)
             Spacer()

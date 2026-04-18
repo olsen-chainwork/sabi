@@ -110,7 +110,7 @@ enum BraveError: LocalizedError {
 
 // MARK: - Helpers
 
-private extension String {
+private nonisolated extension String {
     /// Brave results include `<strong>` tags around matched query terms.
     /// Strip a basic set so we don't render raw HTML in SwiftUI.
     var strippedHTML: String {
