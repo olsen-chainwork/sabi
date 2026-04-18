@@ -21,9 +21,12 @@ import SwiftUI
 
 struct SourcesSettingsView: View {
     @State private var store = SourcesStore.shared
+    @State private var polling = PollingPrefs.shared
     @State private var newDomain: String = ""
     @State private var showResetConfirm: Bool = false
     @State private var addError: String? = nil
+    @State private var isChecking: Bool = false
+    @State private var lastCheckMessage: String? = nil
 
     var body: some View {
         Form {
@@ -33,6 +36,8 @@ struct SourcesSettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            pollingSection
 
             addSection
 
@@ -69,6 +74,49 @@ struct SourcesSettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 620)
+    }
+
+    // MARK: - Polling section
+
+    private var pollingSection: some View {
+        Section("Background polling") {
+            Toggle("Ping me when there's something new", isOn: $polling.isEnabled)
+                .toggleStyle(.switch)
+            Text("Every few hours, Sabi checks your sources for fresh content on your current focus and sends a single notification only if something brand-new cracks the top 5.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                Button(action: checkNow) {
+                    if isChecking {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text("Checking…")
+                        }
+                    } else {
+                        Text("Check now")
+                    }
+                }
+                .disabled(isChecking)
+
+                if let lastCheckMessage {
+                    Text(lastCheckMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func checkNow() {
+        isChecking = true
+        lastCheckMessage = nil
+        Task {
+            await BackgroundPoller.shared.tick()
+            isChecking = false
+            lastCheckMessage = "Done — check Console for details."
+        }
     }
 
     // MARK: - Add section

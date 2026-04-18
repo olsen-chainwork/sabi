@@ -48,10 +48,18 @@ nonisolated enum Retrieval {
     /// `suffixes` is typically `SourcesStore.shared.effectiveSuffixes` snapshot
     /// on the MainActor before the call. Passing it in rather than reading a
     /// global keeps this function off-actor and avoids an actor hop per filter.
+    ///
+    /// `freshness` maps to Brave's freshness param:
+    ///   - `"py"` (past year) for manual Fetch — biases toward articles over
+    ///     evergreen hubs, but keeps the pool deep enough to fill top-10.
+    ///   - `"pw"` (past week) for background polling (slice 7) — "brand new"
+    ///     actually means new; we only want to ping for content that didn't
+    ///     exist the last time we polled.
     static func fetch(
         for intent: String,
         suffixes: [String],
-        limit: Int = 10
+        limit: Int = 10,
+        freshness: String = "py"
     ) async throws -> [BraveClient.Result] {
         let cleaned = intent.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else {
@@ -72,7 +80,7 @@ nonisolated enum Retrieval {
                 .map { "site:\($0)" }
                 .joined(separator: " OR ")
             let query = "\(cleaned) (\(siteClause))"
-            let results = try await BraveClient.search(query: query, count: 10, freshness: "py")
+            let results = try await BraveClient.search(query: query, count: 10, freshness: freshness)
             pooled.append(contentsOf: results)
         }
 

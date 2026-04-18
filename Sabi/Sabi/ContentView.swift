@@ -26,6 +26,7 @@
 //  stays focused on intent.
 //
 
+import AppKit
 import SwiftUI
 
 struct ContentView: View {
@@ -58,6 +59,11 @@ struct ContentView: View {
     @State private var isRetrieving: Bool = false
     @State private var isRanking: Bool = false
     @State private var retrievalError: String? = nil
+
+    // Slice 7: accessory apps have no main menu, so Cmd+, doesn't wire up
+    // to the Settings scene automatically. Grab the SwiftUI open-settings
+    // action and trigger it from a gear button in the popover instead.
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -231,6 +237,17 @@ struct ContentView: View {
 
                 Button("Edit", action: startEdit)
                     .buttonStyle(.bordered)
+
+                Button {
+                    openSettings()
+                    // Focus the settings window — accessory apps need a
+                    // nudge since they're not a regular front-facing app.
+                    NSApp.activate(ignoringOtherApps: true)
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .buttonStyle(.bordered)
+                .help("Sources & settings")
             }
 
             Divider()
@@ -453,8 +470,14 @@ struct ContentView: View {
             ranked = rankedResults
             isRanking = false
 
-            // Slice 5: no notification on the manual path. Notifications
-            // come back in slice 7 on the scheduled-polling background path.
+            // Slice 7: mark every URL the user just saw as "seen" so the
+            // background poller doesn't later ping about something they
+            // already scrolled past in the popover. The poller only
+            // surfaces *new* hits; manually-pulled URLs don't count as new.
+            SeenLog.shared.markSeen(rankedResults.map(\.base.url))
+
+            // No notification on the manual path — the list is right there.
+            // Notifications are the background poller's job.
         }
     }
 }

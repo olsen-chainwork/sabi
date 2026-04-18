@@ -40,7 +40,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         // Wire up notification delegate before any banner can present.
-        // Auth is requested lazily the first time `Sabi now` runs.
         Notifier.shared.bootstrap()
+
+        // Slice 7 — prompt for notification permission up front, then start
+        // the background poller. Auth request is idempotent; macOS only
+        // actually prompts on the first run. If the user denies, the poller
+        // still runs, `sendTopPick` just silently fails at delivery time.
+        Task { @MainActor in
+            await Notifier.shared.requestAuthorization()
+            BackgroundPoller.shared.start()
+        }
     }
 }
