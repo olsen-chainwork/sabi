@@ -95,7 +95,49 @@ nonisolated enum Retrieval {
         var seen = Set<URL>()
         let deduped = filtered.filter { seen.insert($0.url).inserted }
 
-        return Array(deduped.prefix(limit))
+        // Round-robin across hosts before trimming to `limit`.
+        //
+        // Why this exists: batches fire serially and each returns its own
+        // top 10. For a topic-concentrated intent (e.g. "LLM evaluation"
+        // hits arxiv hard), batch 1 alone can fill 10 slots with a single
+        // host, and `prefix(limit)` on the pooled list would never reach
+        // later batches' LessWrong / Distill / Stratechery hits. Ranker
+        // diversify then has nothing to spread across.
+        //
+        // Interleaving by host forces the pool handed to the ranker to
+        // carry source breadth, which Haiku can then prioritize by
+        // topical match. Relative rank within a host is preserved —
+        // we just cycle through hosts one at a time.
+        return interleaveByHost(deduped, limit: limit)
+    }
+
+    /// Round-robin results by hostname. First pass picks the top result
+    /// from each host in first-seen order; subsequent passes do the same
+    /// with whatever's left, until we've hit `limit` or exhausted the pool.
+    private static func interleaveByHost(
+        _ results: [BraveClient.Result],
+        limit: Int
+    ) -> [BraveClient.Result] {
+        var queues: [String: [BraveClient.Result]] = [:]
+        var order: [String] = []
+        for result in results {
+            let host = (result.url.host ?? "").lowercased()
+            if queues[host] == nil { order.append(host) }
+            queues[host, default: []].append(result)
+        }
+
+        var out: [BraveClient.Result] = []
+        while out.count < limit {
+            var pulledThisRound = false
+            for host in order {
+                guard !(queues[host]?.isEmpty ?? true) else { continue }
+                out.append(queues[host]!.removeFirst())
+                pulledThisRound = true
+                if out.count >= limit { return out }
+            }
+            if !pulledThisRound { break }
+        }
+        return out
     }
 
     /// Suffix-match a URL's host against the given list. Mirrors

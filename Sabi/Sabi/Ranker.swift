@@ -78,6 +78,11 @@ nonisolated enum Ranker {
     /// Two-pass because single-pass "skip if over cap" would silently drop
     /// results — we want them pushed down, not omitted, since a user might
     /// scroll past the top 5.
+    ///
+    /// Uses `canonicalDomain(for:)` so `www.arxiv.org`, `arxiv.org`, and
+    /// `export.arxiv.org` all collapse to the same bucket. Otherwise one
+    /// logical source could sweep the top 5 by appearing under multiple
+    /// subdomains, defeating the cap.
     private static func diversify(
         _ results: [RankedResult],
         maxPerDomain: Int = 2
@@ -87,19 +92,32 @@ nonisolated enum Ranker {
         var counts: [String: Int] = [:]
 
         for result in results {
-            let host = result.base.hostname
-            let count = counts[host, default: 0]
+            let key = canonicalDomain(for: result.base.hostname)
+            let count = counts[key, default: 0]
             if count < maxPerDomain {
                 primary.append(result)
-                counts[host] = count + 1
+                counts[key] = count + 1
             } else {
                 overflow.append(result)
             }
         }
 
+        print("[Sabi] Diversify: \(primary.count) primary, \(overflow.count) overflow. Keys: \(counts)")
         return (primary + overflow).enumerated().map { (position, r) in
             RankedResult(base: r.base, rank: position + 1, reason: r.reason)
         }
+    }
+
+    /// Collapse a raw hostname to the allowlist suffix it matches against.
+    /// Falls back to the normalized hostname (lowercased, `www.` stripped)
+    /// for any host that doesn't match — defensive, since every hit through
+    /// Retrieval should already pass the allowlist.
+    private static func canonicalDomain(for hostname: String) -> String {
+        let host = hostname.lowercased()
+        if let suffix = DomainAllowlist.suffixes.first(where: { host == $0 || host.hasSuffix("." + $0) }) {
+            return suffix
+        }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
     }
 
     // MARK: - Prompt
