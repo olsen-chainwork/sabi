@@ -1,4 +1,4 @@
-# Scout — Slice Plan
+# Sabi — Slice Plan
 
 *CRISPE Phase 5. Ordered vertical slices. Each one ships end-to-end.*
 *Drafted April 17, 2026. 13 days to submission (April 30).*
@@ -24,13 +24,13 @@ Each slice is **thin + end-to-end**. No horizontal layers. No building all the p
 
 **Why first:** the single biggest unknown is "can Chandler ship any Swift Mac app." Everything else depends on it. This slice is the Swift onboarding + end-to-end plumbing test wrapped into one.
 
-**Deliverable:** Xcode project that builds, a menu bar icon appears when run, clicking the icon opens a popover that says "Scout." Closing/reopening the app works. Nothing else.
+**Deliverable:** Xcode project that builds, a menu bar icon appears when run, clicking the icon opens a popover that says "Sabi." Closing/reopening the app works. Nothing else.
 
 **Code touched:** `MenuBarApp` only. ~50–100 lines of Swift.
 
 **Verification:**
 - `cmd+R` in Xcode → icon appears in menu bar
-- Click icon → popover opens, says "Scout"
+- Click icon → popover opens, says "Sabi"
 - Click elsewhere → popover closes
 - Quit app → icon disappears
 
@@ -74,12 +74,12 @@ Each slice is **thin + end-to-end**. No horizontal layers. No building all the p
 
 **Why third:** the other external API. Independent of the LLM path except it reads from `IntentStore`. Tests whether we can get good candidates from Brave with the intent string as a query.
 
-**Deliverable:** given the current intent, a "Scout now" button fetches from Brave and shows the raw candidate list in the popover (title + URL, no ranking yet). Domain allowlist is applied.
+**Deliverable:** given the current intent, a "Sabi now" button fetches from Brave and shows the raw candidate list in the popover (title + URL, no ranking yet). Domain allowlist is applied.
 
 **Code touched:** `RetrievalEngine`, `SearchProvider` (Brave implementation), domain allowlist (hardcoded constant for v1).
 
 **Verification:**
-- Intent: "context engineering for coding agents" → click "Scout now" → see 5–10 real URLs from arXiv, Anthropic Blog, HumanLayer, etc.
+- Intent: "context engineering for coding agents" → click "Sabi now" → see 5–10 real URLs from arXiv, Anthropic Blog, HumanLayer, etc.
 - No allowlist violations (no random news sites showing up)
 - Query fails gracefully when offline
 
@@ -98,12 +98,12 @@ Each slice is **thin + end-to-end**. No horizontal layers. No building all the p
 
 **Why fourth:** the killer slice. First moment the product actually behaves like a product. Take Brave's candidates, hand them to Haiku with the intent, get one winner back, show it in the popover.
 
-**Deliverable:** click "Scout now" → Brave fetch → Haiku ranks → one ping shows in popover with title + URL. Click link opens it in browser. This is Scout's success scene running end-to-end for the first time.
+**Deliverable:** click "Sabi now" → Brave fetch → Haiku ranks → one ping shows in popover with title + URL. Click link opens it in browser. This is Sabi's success scene running end-to-end for the first time.
 
 **Code touched:** `RankingEngine`, `PingQueue` (simplest version — just holds the latest ping), popover view with link+click.
 
 **Verification:**
-- The Success Scene from the Design Doc: intent is about CRISPE / coding agents → click Scout now → ping comes back about context engineering or related → it's actually good → click link → opens in browser.
+- The Success Scene from the Design Doc: intent is about CRISPE / coding agents → click Sabi now → ping comes back about context engineering or related → it's actually good → click link → opens in browser.
 - Try with 3 different intents. Does the winner feel right for each?
 - If the winner feels consistently bad, iterate on the ranking prompt before moving on.
 
@@ -128,9 +128,9 @@ Each slice is **thin + end-to-end**. No horizontal layers. No building all the p
 **Code touched:** `FeedbackLoop`, `PingStore` (feedback table), `Settings` view, ranking prompt gets a new section for "user's recent preferences."
 
 **Verification:**
-- Thumbs down a ping → click Scout now again → get a different kind of result
+- Thumbs down a ping → click Sabi now again → get a different kind of result
 - Thumbs up another kind of content → see that style reflected in later pings
-- Cap at 5/day → after 5 pings, "Scout now" is disabled or shows "daily cap hit"
+- Cap at 5/day → after 5 pings, "Sabi now" is disabled or shows "daily cap hit"
 
 **Risks:**
 - Feedback-summary-to-prompt is easy to get wrong. Keep it dumb: concatenate the 5 most-recent-thumbs-down URLs with their domains, tell Haiku "avoid this kind."
@@ -144,21 +144,21 @@ Each slice is **thin + end-to-end**. No horizontal layers. No building all the p
 
 ## Slice 6 — Scheduler + auto-trigger (optional)
 
-**Why sixth:** makes Scout autonomous. Without it, user must click "Scout now." With it, pings arrive on their own every N hours. This is the "feels like a product" slice — but it's also the most macOS-gotcha-prone slice. **Cuttable if days run short.**
+**Why sixth:** makes Sabi autonomous. Without it, user must click "Sabi now." With it, pings arrive on their own every N hours. This is the "feels like a product" slice — but it's also the most macOS-gotcha-prone slice. **Cuttable if days run short.**
 
 **Deliverable:** menu bar icon shows a dot when a new ping is queued. Scheduler fires every 4 hours (configurable) while app is running. Icon dot clears when user reads the ping.
 
 **Code touched:** Swift `Timer` (foreground polling) as the simple path, `BGAppRefreshTask` as the "right way" if we have time. Menu bar icon state.
 
 **Verification:**
-- Leave Scout running 4 hours → see a dot appear on the icon automatically
+- Leave Sabi running 4 hours → see a dot appear on the icon automatically
 - Click icon → ping appears → dot clears
 
 **Risks:**
 - macOS suspends menu bar apps. `BGAppRefreshTask` needs entitlements and specific configuration. Could burn a full day.
 - `Timer` while foreground is trivial but stops when app is suspended.
 
-**Cut criterion:** if we're at end of day 10 and slices 1–5 aren't all shipped, **skip this slice**. Scout works manually. Users click "Scout now" when they want a ping. Ship that version; mention auto-trigger as "v1.1" in the pitch.
+**Cut criterion:** if we're at end of day 10 and slices 1–5 aren't all shipped, **skip this slice**. Sabi works manually. Users click "Sabi now" when they want a ping. Ship that version; mention auto-trigger as "v1.1" in the pitch.
 
 **Budget impact:** $0 (no new API calls; same cycle on a timer).
 
@@ -174,11 +174,11 @@ Each slice is **thin + end-to-end**. No horizontal layers. No building all the p
 
 - **First-run onboarding:** install → icon → click → popover shows "What are you learning?" → walk user through augment → confirm → first ping arrives.
 - **Empty states:** no intent set, API error, Brave returned zero results, daily cap hit, offline. Each with a clear one-line message.
-- **Landing page:** static HTML on Vercel free tier. Above the fold: what Scout is in 5 seconds (contest criterion #1), a screenshot or short GIF, a "download" link (GitHub release), and the "built with Claude Code, runs on Claude Haiku" line.
-- **Pitch video:** 60–90 seconds. Success scene recorded on Chandler's Mac. Voiceover explaining what Scout is, who it's for, why it's different, built-with-Codex-errr-Claude story.
+- **Landing page:** static HTML on Vercel free tier. Above the fold: what Sabi is in 5 seconds (contest criterion #1), a screenshot or short GIF, a "download" link (GitHub release), and the "built with Claude Code, runs on Claude Haiku" line.
+- **Pitch video:** 60–90 seconds. Success scene recorded on Chandler's Mac. Voiceover explaining what Sabi is, who it's for, why it's different, built-with-Codex-errr-Claude story.
 - **GitHub release:** unsigned `.app` bundle with a README that includes right-click-to-open instructions.
 
-**Code touched:** onboarding flow in `MenuBarApp`, error state views, landing page in its own folder (`/scout/landing/`), pitch video assets in `/scout/pitch/`.
+**Code touched:** onboarding flow in `MenuBarApp`, error state views, landing page in its own folder (`/sabi/landing/`), pitch video assets in `/sabi/pitch/`.
 
 **Verification:**
 - Fresh user flow: install → see icon → click → guided through → first ping → success scene works
@@ -223,7 +223,7 @@ From Dex's CRISPE + our own locked decisions:
 3. **Ship each slice before moving on.** "Ship" = builds clean, runs, does what the slice says, committed to git.
 4. **Don't skip ahead to polish.** Ugly working code beats pretty non-working code.
 5. **If a slice runs >50% over budget on time, stop and reassess.** Don't sunk-cost.
-6. **Write notes as you go.** Build journal lives in `/scout/BUILD-NOTES.md` (create in slice 1).
+6. **Write notes as you go.** Build journal lives in `/sabi/BUILD-NOTES.md` (create in slice 1).
 
 ---
 

@@ -1,4 +1,4 @@
-# Scout — Structure Outline
+# Sabi — Structure Outline
 
 *CRISPE Phase 4. Shape of the system before we write code. ~2 pages, like a C header file.*
 *Drafted April 17, 2026.*
@@ -7,7 +7,7 @@
 
 ## What this doc is
 
-A high-level map of Scout's modules, the data flow through one ping cycle, the Swift protocols that hold them together, and the open questions the structure surfaces. It's the thing the slice plan gets ordered against.
+A high-level map of Sabi's modules, the data flow through one ping cycle, the Swift protocols that hold them together, and the open questions the structure surfaces. It's the thing the slice plan gets ordered against.
 
 **What this doc is not:** code, a tutorial, a tactical plan. No Swift syntax. No pseudocode beyond protocol shapes.
 
@@ -19,7 +19,7 @@ Seven components. Each does one thing.
 
 1. **`MenuBarApp`** — SwiftUI entry point. Owns the `MenuBarExtra` scene, the icon (with/without dot), and the popover window. Pure shell. No business logic.
 
-2. **`IntentStore`** — persists the user's *current* declared intent: the seed string (what they typed) and the refined, user-confirmed version (what Scout searches for). One active intent at a time in v1. Backed by SQLite or plist.
+2. **`IntentStore`** — persists the user's *current* declared intent: the seed string (what they typed) and the refined, user-confirmed version (what Sabi searches for). One active intent at a time in v1. Backed by SQLite or plist.
 
 3. **`AugmentFlow`** — given a seed string, calls `LLMProvider` to produce a refined intent, then shows it to the user for confirm-or-edit. Writes the confirmed intent to `IntentStore`. This is the "user in driver's seat" gate from decision #1.
 
@@ -151,9 +151,9 @@ Everything eventually funnels into `MenuBarApp` for display.
 
 Structure forces us to commit on a few things the Design Doc left open. Proposing these for ratification:
 
-- **What triggers a ping?** → v1: scheduled (every 4 hours, configurable) + a manual "Scout now" menu item. Respects the daily cap. Simpler than a quality gate; quality gate is v2 once we have feedback data.
+- **What triggers a ping?** → v1: scheduled (every 4 hours, configurable) + a manual "Sabi now" menu item. Respects the daily cap. Simpler than a quality gate; quality gate is v2 once we have feedback data.
 - **Augment step UX** → modal sheet inside the popover with the refined intent as editable text. Two buttons: "Looks good" and "Start over." No categories, no multi-step wizard. Maybe 2 screens total for the flow.
-- **First-run onboarding** → install → icon appears → click icon → empty popover with "What are you learning right now?" text field → type → augment flow → confirm → scout starts. Three visible states. No splash screen, no account creation.
+- **First-run onboarding** → install → icon appears → click icon → empty popover with "What are you learning right now?" text field → type → augment flow → confirm → Sabi starts. Three visible states. No splash screen, no account creation.
 
 ---
 

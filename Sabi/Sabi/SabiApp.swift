@@ -1,14 +1,14 @@
 //
-//  ScoutApp.swift
-//  Scout
+//  SabiApp.swift
+//  Sabi
 //
 
 import SwiftUI
 
 @main
-struct ScoutApp: App {
+struct SabiApp: App {
     var body: some Scene {
-        MenuBarExtra("Scout", systemImage: "binoculars") {
+        MenuBarExtra("Sabi", systemImage: "binoculars") {
             ContentView()
         }
         .menuBarExtraStyle(.window)

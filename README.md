@@ -1,4 +1,4 @@
-# Scout — Project Folder
+# Sabi — Project Folder
 
 Working name for the OpenAI × Handshake Codex Creator Challenge submission.
 Started April 17, 2026. Submission due April 30, 2026 (13 days).

@@ -1,6 +1,6 @@
-# Scout — Design Doc
+# Sabi — Design Doc
 
-*Working name. Rename when the right word lands.*
+*Named after Chandler's first dog (still alive, still a very good boy). Locked April 17, 2026 evening, after slice 1 shipped.*
 *Project started April 17, 2026. Submission due April 30, 2026 (13 days).*
 *For the OpenAI × Handshake Codex Creator Challenge.*
 *Following Dex's CRISPE sequence. Passed the PROJECT-PREFLIGHT filter (6/6).*
@@ -9,7 +9,7 @@
 
 ## One line
 
-> **An AI scout that watches what I'm learning and pings me the best related thing I haven't found yet — no subscriptions, no feed, just "you should see this" when there's actually something worth seeing.**
+> **Sabi is an AI scout that watches what I'm learning and pings me the best related thing I haven't found yet — no subscriptions, no feed, just "you should see this" when there's actually something worth seeing.**
 
 ---
 
@@ -35,7 +35,7 @@ Summarized from Phase 2 research — full report in [`research.md`](research.md)
 
 **Agentic search APIs** (Exa, OpenAI Responses API, Brave) are mature enough for an indie dev to build a content scout on top of. Perplexity Sonar returns prose, not links — doesn't fit decision #6. Bing is deprecated.
 
-**The gap:** declared-intent + agent-fetch + one-link-push doesn't exist in the reader space. That's the seam Scout sits in.
+**The gap:** declared-intent + agent-fetch + one-link-push doesn't exist in the reader space. That's the seam Sabi sits in.
 
 ## Patterns to follow
 
@@ -50,14 +50,14 @@ Summarized from Phase 2 research — full report in [`research.md`](research.md)
 - **Email digest** — wrong channel for "push me one thing." Already crowded ground (Refind, newsletters).
 - **Prose-summary retrieval** (Perplexity-style) — fights decision #6 (one clean link).
 - **Electron weight** — 200MB+ RAM idle, 80–200MB binary. Undermines the "lives quietly in the menu bar" feel.
-- **General AI assistant framing** — Scout does one verb (ping). Not a chat, not a search, not a summarizer.
+- **General AI assistant framing** — Sabi does one verb (ping). Not a chat, not a search, not a summarizer.
 
 ---
 
 ## Locked design decisions
 
 **1. Declared intent, not inferred.**
-User types a seed → AI augments it into a sharper, more specific description of what the user is learning → user confirms or edits → the scout uses the confirmed version to find pings. The AI doesn't guess from behavior. The user is always in the driver's seat. *(This is the anti-hallucination move — the scout can't drift off into unrelated content because the intent is always explicit and user-confirmed.)*
+User types a seed → AI augments it into a sharper, more specific description of what the user is learning → user confirms or edits → Sabi uses the confirmed version to find pings. The AI doesn't guess from behavior. The user is always in the driver's seat. *(This is the anti-hallucination move — Sabi can't drift off into unrelated content because the intent is always explicit and user-confirmed.)*
 
 **2. Mac-only — deliberately.**
 Lives in the Mac menu bar. Positioning signal: *"if you have a Mac, this is for you."* Exclusivity is a feature, not a limitation. No Windows, iOS, Android, or Linux in v1.
@@ -66,21 +66,21 @@ Lives in the Mac menu bar. Positioning signal: *"if you have a Mac, this is for 
 Top of the screen, non-intrusive. Clickable icon with a small indicator when there's a new ping. Can be hidden like other menu bar items.
 
 **4. User-capped ping rate.**
-User sets a daily max — e.g., 5, 10, up to 15 pings per day. Scout respects the cap. *(Trigger logic — schedule vs. on-demand vs. quality-gated — is still open.)*
+User sets a daily max — e.g., 5, 10, up to 15 pings per day. Sabi respects the cap. *(Trigger logic — schedule vs. on-demand vs. quality-gated — is still open.)*
 
 **5. Thumbs up / thumbs down feedback.**
-Binary. Feedback data goes back to the scout so it can learn what counts as "the best related thing" for this specific user.
+Binary. Feedback data goes back to Sabi so it can learn what counts as "the best related thing" for this specific user.
 
 **6. A ping is one clean link.**
 No AI commentary, no "why I picked this" note, no ranked top-3, no synthesized digest. Title + URL + click-to-open. Reasoning: the value lives in whether the *link itself* is right. If it's right, no commentary is needed; if it's wrong, no commentary will save it. Starting minimal forces the retrieval + ranking quality to carry the product — which is where the product has to win anyway. *(Reversible in v2 if real usage says otherwise.)*
 
-**Candidate product name: "Ping."** Parked — decided to revisit before submission. "Scout" stays as the working name in files and folders.
+**Name: Sabi.** After Chandler's first dog. Decided April 17, 2026 evening. Candidate names considered and dropped: "Scout" (the original working name, also a verb the product performs — role stays; brand moves on) and "Ping" (too generic, and "ping" is reserved for the product's core verb anyway).
 
 ---
 
 ## Still open (resolve in next rounds)
 
-- **What triggers a ping?** User-capped daily count is a quality gate, not a trigger. Does the scout run on a schedule, on-demand, or only when it clears a "good enough" bar?
+- **What triggers a ping?** User-capped daily count is a quality gate, not a trigger. Does Sabi run on a schedule, on-demand, or only when it clears a "good enough" bar?
 - **Augment step UX.** How does the refined intent show up — editable text, topic list, natural-language summary?
 - **First-run onboarding.** User installs the app. Then what?
 
@@ -94,7 +94,7 @@ No AI commentary, no "why I picked this" note, no ranked top-3, no synthesized d
 
 - No feed / no infinite scroll
 - No social layer / no multi-user / no sharing-with-friends
-- No user-subscribed sources (the scout finds them; the user doesn't configure feeds)
+- No user-subscribed sources (Sabi finds them; the user doesn't configure feeds)
 - No Windows, iOS, Android, Linux
 - No accounts beyond the minimum required to persist state
 - No monetization, billing, or paywall
@@ -103,7 +103,7 @@ No AI commentary, no "why I picked this" note, no ranked top-3, no synthesized d
 
 ## Success scene (60 seconds of real use)
 
-Monday morning. I open my laptop. The Scout icon in the menu bar has a small dot — one new ping. I click. It's an article about context engineering for coding agents, related to the CRISPE work I did last week. I read it in 8 minutes. It's actually good. I thumbs-up. The dot disappears. I go back to my work.
+Monday morning. I open my laptop. The Sabi icon in the menu bar has a small dot — one new ping. I click. It's an article about context engineering for coding agents, related to the CRISPE work I did last week. I read it in 8 minutes. It's actually good. I thumbs-up. The dot disappears. I go back to my work.
 
 *This scene is also the pitch video outline.*
 
@@ -159,3 +159,4 @@ TBD. Written after the structure outline.
 - **2026-04-17 (morning):** Project started. Idea locked after running the 6-point PROJECT-PREFLIGHT filter (6/6). Working name: "Scout." Five design decisions locked in first round of clarifying questions.
 - **2026-04-17 (afternoon):** Sixth design decision locked — a ping is one clean link (no AI note, no top-3, no digest). Candidate product name "Ping" parked for later. Clarifying questions phase closed. Moving to Research.
 - **2026-04-17 (evening):** Research phase complete (`research.md`). Tech stack locked: Swift + SwiftUI (Chandler doesn't know Swift; Claude Code teaches through diffs), Claude Haiku 4.5 runtime, Brave Search free tier, local SQLite. Budget locked at $40.56 total runtime (friend's Anthropic credit grant, auto-reload disabled). No Apple Developer Program for v1. Domain allowlist decided as retrieval quality floor, resolving "where do pings come from?" OpenAI student credits denied — project builds and runs entirely on Anthropic stack + Brave free tier, no hoops. Anti-slop rule (read every diff) stays non-negotiable. Moving to structure outline.
+- **2026-04-17 (late evening):** Slice 1 shipped (menu bar hello world). Name locked: **Sabi**, after Chandler's first dog. Rewrite applied to Xcode project, Swift source, docs, bundle identifier (`com.olsen-chainwork.Sabi`), and repo. Build journal preserves the original "Scout" name in the Day 1 slice-1 entry; forward-looking docs (this one, SLICES, STRUCTURE, README, research) rewritten to Sabi. "Scout" survives as a verb the product performs.

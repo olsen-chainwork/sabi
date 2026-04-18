@@ -1,4 +1,6 @@
-# Scout — Build Notes
+# Sabi — Build Notes
+
+*(Journal started under the working name "Scout"; project renamed to Sabi on Day 1 — see rename entry below. Prior entries reference "Scout" intentionally, as written at the time.)*
 
 *CRISPE execution journal. One entry per working session. Short, factual, forward-looking.*
 
@@ -26,6 +28,32 @@
 **Diffs read:** yes (small ones).
 
 **Next:** Slice 2 — Intent + augment + confirm. Brings in the Anthropic API (friend's $40.56 account), intent storage, first popover interaction beyond static text.
+
+---
+
+## 2026-04-17 (late evening) — Rename: Scout → Sabi
+
+**Shipped:** product renamed end-to-end after slice 1 landed. Sabi is named after Chandler's first dog (still alive). Xcode project, Swift types, bundle identifier, and all forward-looking docs carry the new name. The original "Scout" name stays inside this journal's slice-1 entry and as a verb the product performs ("Sabi is an AI scout that watches...").
+
+**Code touched:**
+- `Scout/` → `Sabi/` (outer wrapper), `Scout/Scout/` → `Sabi/Sabi/` (source folder), `Scout.xcodeproj` → `Sabi.xcodeproj`
+- `ScoutApp.swift` → `SabiApp.swift`; `struct ScoutApp` → `struct SabiApp`; `MenuBarExtra("Scout", …)` → `MenuBarExtra("Sabi", …)`
+- `ContentView.swift`: popover title `Text("Scout")` → `Text("Sabi")`
+- `project.pbxproj`: global Scout → Sabi (target name, product name, group paths, references). Bundle id `com.olsen-chainwork.Scout` → `com.olsen-chainwork.Sabi` in both Debug and Release configs
+- Forward-looking docs rewritten: `DESIGN-DOC.md`, `SLICES.md`, `STRUCTURE.md`, `README.md`, `research.md`
+- This journal's title updated; slice-1 entry preserved as-written (history-honest)
+
+**Gotchas hit:**
+1. Xcode 26.4 uses `PBXFileSystemSynchronizedRootGroup` in pbxproj (file-system sync) so the source folder rename was mostly auto-reflected — only the `path = Scout;` group entry and the target/product-name fields needed explicit edits. Modern Xcode is friendlier to renames than the old every-file-listed-in-pbxproj world.
+2. `xcuserdata/` had a stale `Scout.xcscheme_...` key in `xcschememanagement.plist`. Directory is gitignored (so no commit impact) but Xcode reads it on next open — updated the key to `Sabi.xcscheme_...` to avoid a rebuilt-scheme detour.
+3. Not a gotcha, a note: `/scout/` paths inside planning docs (`/scout/landing/`, `/scout/pitch/`, `/scout/BUILD-NOTES.md`) rewritten to `/sabi/` in the forward-looking docs. The BUILD-NOTES Day-1 entry still references `~/Developer/scout/` because that's the folder we were in at the time; folder rename to `~/Developer/sabi/` hasn't happened yet (happens in the follow-up commands).
+4. "Scout now" button copy became "Sabi now" in plan docs via global replace — button copy is still TBD; that's a UX decision for slice 3/4, not a rename artifact.
+
+**Time spent:** ~30 min, including a name conversation first.
+
+**Diffs read:** yes.
+
+**Next:** open Xcode, hit cmd+R, verify build still works — same slice-1 behavior but popover now reads "Sabi / Menu bar hello world" and bundle is `com.olsen-chainwork.Sabi`. Then run the repo/folder rename commands (gh repo rename, git remote set-url, mv `~/Developer/scout` → `~/Developer/sabi`), commit, and push. Then slice 2.
 
 ---
 

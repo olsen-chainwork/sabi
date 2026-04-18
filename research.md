@@ -1,4 +1,4 @@
-# Scout — Research Report
+# Sabi — Research Report
 
 *CRISPE Phase 2 output. Facts only. Produced April 17, 2026 by delegated research agent. No design decisions made here — raw landscape for use in Design Doc completion.*
 
@@ -33,7 +33,7 @@
 **Feedly** — RSS reader + news aggregator. Feedly AI (Leo) filters and prioritizes feeds before you read them. Delivery: feed view. AI role: pre-read filtering, headline-level summarization. **No autonomous discovery.**
 → [Feedly](https://feedly.com/)
 
-**Refind** — Curated discovery service. Delivers 5 hand-selected articles daily to your interests. Output: email digest or in-app discovery feed. AI role: ranking/filtering to reduce noise. Integrates with Readwise for export. **Closest in spirit to Scout** but delivered as email digest, not push, and sources are curated not agentically fetched.
+**Refind** — Curated discovery service. Delivers 5 hand-selected articles daily to your interests. Output: email digest or in-app discovery feed. AI role: ranking/filtering to reduce noise. Integrates with Readwise for export. **Closest in spirit to Sabi** but delivered as email digest, not push, and sources are curated not agentically fetched.
 → [Refind](https://refind.com/)
 
 **MyMind** — Private note-taking + visual bookmarking. AI auto-organizes clips and suggests backlinks. **No feed;** content is user-saved.

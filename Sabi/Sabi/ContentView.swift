@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  Scout
+//  Sabi
 //
 
 import SwiftUI
@@ -8,7 +8,7 @@ import SwiftUI
 struct ContentView: View {
     var body: some View {
         VStack(spacing: 12) {
-            Text("Scout")
+            Text("Sabi")
                 .font(.title)
                 .fontWeight(.semibold)
             Text("Menu bar hello world.")
