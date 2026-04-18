@@ -6,6 +6,12 @@ secrets/
 *.pem
 *.key
 config.local.*
+# Swift: local dev secrets file, holds API keys for dev builds.
+# Keychain comes later (slice 7 polish). Never commit any variant.
+Secrets.swift
+**/Secrets.swift
+Secrets.local.swift
+**/Secrets.local.swift
 
 # ---------- macOS ----------
 .DS_Store
