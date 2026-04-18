@@ -23,6 +23,13 @@ struct SabiApp: App {
             ContentView()
         }
         .menuBarExtraStyle(.window)
+
+        // Slice 6 — `.settings { }` gives us a Cmd+, window for free.
+        // Accessory apps don't have a menu bar, so Cmd+, from inside the
+        // popover is the canonical way to open this on macOS.
+        Settings {
+            SourcesSettingsView()
+        }
     }
 }
 

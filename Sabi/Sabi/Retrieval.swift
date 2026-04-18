@@ -2,7 +2,7 @@
 //  Retrieval.swift
 //  Sabi
 //
-//  Orchestrates BraveClient + DomainAllowlist.
+//  Orchestrates BraveClient + DomainAllowlist + SourcesStore.
 //
 //  Slice 3 — search the open web, then filter to allowlist.
 //  Slice 5 — flipped to site-restricted search. For broad seeds like
@@ -10,6 +10,10 @@
 //            20 on the open web (Wikipedia/Investopedia/etc. dominate),
 //            so we ask Brave directly for results from our sites via
 //            `site:a OR site:b OR …` chains.
+//  Slice 6 — `fetch` takes an explicit `suffixes` list so callers can
+//            pass the effective (curated + user-edited) set. Keeps
+//            actor isolation clean: SourcesStore is MainActor, but
+//            Retrieval runs off-actor for the Brave round-trips.
 //
 //  Brave caps the `q` param at 400 characters. Fixed-count batching
 //  (e.g. 15 domains) is fragile — a batch full of long domain names
@@ -38,16 +42,27 @@ nonisolated enum Retrieval {
     /// for the intent and the wrapping parens/space.
     private static let maxSiteClauseLength = 250
 
-    /// Fetch candidates for the given intent from the allowlist via
-    /// Brave's `site:` operator, then return up to `limit` deduped results.
-    static func fetch(for intent: String, limit: Int = 10) async throws -> [BraveClient.Result] {
+    /// Fetch candidates for the given intent from `suffixes` via Brave's
+    /// `site:` operator, then return up to `limit` deduped results.
+    ///
+    /// `suffixes` is typically `SourcesStore.shared.effectiveSuffixes` snapshot
+    /// on the MainActor before the call. Passing it in rather than reading a
+    /// global keeps this function off-actor and avoids an actor hop per filter.
+    static func fetch(
+        for intent: String,
+        suffixes: [String],
+        limit: Int = 10
+    ) async throws -> [BraveClient.Result] {
         let cleaned = intent.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else {
             throw RetrievalError.emptyIntent
         }
+        guard !suffixes.isEmpty else {
+            throw RetrievalError.noAllowedResults
+        }
 
         let batches = packBatches(
-            domains: DomainAllowlist.suffixes,
+            domains: suffixes,
             maxClauseLength: maxSiteClauseLength
         )
 
@@ -62,10 +77,10 @@ nonisolated enum Retrieval {
         }
 
         // Defense-in-depth: the `site:` operator is usually reliable but
-        // re-filter against the allowlist so nothing sneaks through.
+        // re-filter against the passed-in suffixes so nothing sneaks through.
         // Also drop homepages / short hub pages — we want articles.
         let filtered = pooled.filter {
-            DomainAllowlist.isAllowed(url: $0.url) && looksLikeArticle($0.url)
+            isAllowed(url: $0.url, among: suffixes) && looksLikeArticle($0.url)
         }
 
         // Dedup by URL; the first occurrence wins (higher-ranked batch).
@@ -73,6 +88,17 @@ nonisolated enum Retrieval {
         let deduped = filtered.filter { seen.insert($0.url).inserted }
 
         return Array(deduped.prefix(limit))
+    }
+
+    /// Suffix-match a URL's host against the given list. Mirrors
+    /// `DomainAllowlist.isAllowed(url:)` but takes the list as a parameter
+    /// so we can use the effective (user-edited) list without coupling to
+    /// a MainActor-isolated store.
+    private static func isAllowed(url: URL, among suffixes: [String]) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        return suffixes.contains { suffix in
+            host == suffix || host.hasSuffix("." + suffix)
+        }
     }
 
     /// Heuristic: is this URL's path shaped like an article rather than a

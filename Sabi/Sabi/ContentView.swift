@@ -407,11 +407,17 @@ struct ContentView: View {
         guard !intent.isEmpty else { return }
         retrievalError = nil
         isRetrieving = true
+
+        // Snapshot the user's effective source list on the MainActor before
+        // kicking off the async work. SourcesStore is MainActor-isolated;
+        // Retrieval is not. Snapshot-and-pass is the clean way across.
+        let suffixes = SourcesStore.shared.effectiveSuffixes
+
         Task {
             // 1. Brave + allowlist
             let candidates: [BraveClient.Result]
             do {
-                candidates = try await Retrieval.fetch(for: intent)
+                candidates = try await Retrieval.fetch(for: intent, suffixes: suffixes)
                 print("[Sabi] Retrieved \(candidates.count) allowlisted candidates for: \(intent)")
             } catch {
                 print("[Sabi] Retrieval error: \(error)")
