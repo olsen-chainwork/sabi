@@ -82,7 +82,7 @@ struct SourcesSettingsView: View {
         Section("Background polling") {
             Toggle("Ping me when there's something new", isOn: $polling.isEnabled)
                 .toggleStyle(.switch)
-            Text("Every few hours, Sabi checks your sources for fresh content on your current focus and sends a single notification only if something brand-new cracks the top 5.")
+            Text("While Sabi is running, it checks your sources every few hours for fresh content on your focus. You'll get one notification only if something brand-new cracks the top 5.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -115,7 +115,10 @@ struct SourcesSettingsView: View {
         Task {
             await BackgroundPoller.shared.tick()
             isChecking = false
-            lastCheckMessage = "Done — check Console for details."
+            // End-user copy. If anything brand-new cracked the top 5, Notifier
+            // already fired a banner; silence means "nothing new this pass,"
+            // not a failure. Either way, the UX promise holds.
+            lastCheckMessage = "Checked — I'll ping you if anything new surfaces."
         }
     }
 

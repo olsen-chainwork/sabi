@@ -40,6 +40,9 @@ struct ContentView: View {
     /// @Observable singleton — SwiftUI re-renders when `currentIntent` changes.
     private let intents = IntentStore.shared
 
+    /// Observed so the saved-view subtitle reflects polling state honestly.
+    private let polling = PollingPrefs.shared
+
     /// Rotating spinner copy for the augment step. A fresh phrase is picked
     /// every time `augment()` runs so repeated use feels alive instead of stale.
     private static let spinnerPhrases = [
@@ -97,7 +100,11 @@ struct ContentView: View {
         case .idle: return "What are you curious about?"
         case .augmenting: return "Sharpening your focus…"
         case .reviewing: return "Does this look right?"
-        case .saved: return "Sabi's watching the web for this"
+        case .saved:
+            // Don't lie when polling is off — the header should track reality.
+            return polling.isEnabled
+                ? "Sabi's watching the web for this"
+                : "Polling paused — fetch manually"
         }
     }
 
@@ -258,24 +265,12 @@ struct ContentView: View {
 
     @ViewBuilder
     private var candidatesSection: some View {
+        // Loading state is already communicated by the Fetch button's label
+        // ("Searching the web…" / "Picking the best one…"). Showing a second
+        // spinner here was duplicative and made the popover feel busier than
+        // the work actually is. Error + empty + populated is all we need.
         if let retrievalError {
             errorBanner(retrievalError)
-            Spacer(minLength: 0)
-        } else if isRetrieving {
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Searching the web…")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-        } else if isRanking {
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Picking the best one…")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
             Spacer(minLength: 0)
         } else if ranked.isEmpty {
             Text("Hit Fetch and we'll find you a good read.")
@@ -412,8 +407,12 @@ struct ContentView: View {
     }
 
     private func startEdit() {
-        seed = ""
-        draft = ""
+        // Prefill with the saved focus so "Edit" actually means edit, not
+        // "start over from a blank page." Users almost always want to tweak,
+        // not retype. If they do want to start over, clearing the field takes
+        // one Cmd+A + Delete.
+        seed = intents.currentIntent
+        draft = intents.currentIntent
         errorMessage = nil
         // Don't clear ranked here — intent is still saved, user may come back.
         mode = .idle
