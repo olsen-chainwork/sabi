@@ -1,0 +1,45 @@
+# ---------- Secrets — NEVER COMMIT ----------
+.env
+.env.*
+*.env
+secrets/
+*.pem
+*.key
+config.local.*
+
+# ---------- macOS ----------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# ---------- Xcode ----------
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ---------- Swift Package Manager ----------
+.build/
+.swiftpm/
+Packages/
+Package.pins
+Package.resolved
+
+# ---------- Logs / IDE / Misc ----------
+*.log
+.vscode/
+.idea/
+node_modules/
