@@ -2,20 +2,21 @@
 //  ContentView.swift
 //  Scout
 //
-//  Created by Chandler on 4/17/26.
-//
 
 import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        VStack(spacing: 12) {
+            Text("Scout")
+                .font(.title)
+                .fontWeight(.semibold)
+            Text("Menu bar hello world.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding()
+        .frame(width: 240, height: 140)
     }
 }
 
