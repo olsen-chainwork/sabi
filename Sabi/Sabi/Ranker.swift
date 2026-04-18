@@ -26,6 +26,14 @@ nonisolated enum Ranker {
 
     /// Rank `candidates` against `intent`. Returns them best→worst.
     /// Never throws on parse failure — falls back to Brave order instead.
+    ///
+    /// After Haiku's ranking, we apply a domain-diversification pass that
+    /// caps each hostname at `maxPerDomain` in the top segment and pushes
+    /// overflow to the end. This exists because Sabi's product promise is
+    /// "curated mix of ~60 sources" but arxiv (and similar dominant sources)
+    /// can easily sweep all 5 top slots for research-heavy queries. A
+    /// soft cap preserves relevance (Haiku's top picks still win) while
+    /// ensuring the top 5 telegraphs source breadth.
     static func rank(
         intent: String,
         candidates: [BraveClient.Result]
@@ -43,20 +51,54 @@ nonisolated enum Ranker {
             )
         } catch {
             print("[Sabi] Ranker network error: \(error) — falling back to Brave order")
-            return fallback(candidates: candidates)
+            return diversify(fallback(candidates: candidates))
         }
 
         guard let parsed = parse(reply: reply, count: candidates.count) else {
             print("[Sabi] Ranker parse failed. Raw reply:\n\(reply)")
-            return fallback(candidates: candidates)
+            return diversify(fallback(candidates: candidates))
         }
 
-        return parsed.enumerated().map { (position, entry) in
+        let ordered = parsed.enumerated().map { (position, entry) in
             RankedResult(
                 base: candidates[entry.index],
                 rank: position + 1,
                 reason: entry.reason
             )
+        }
+        return diversify(ordered)
+    }
+
+    // MARK: - Diversify
+
+    /// Cap each domain at `maxPerDomain` in the top segment; overflow goes
+    /// to the end, preserving within-bucket order. Rank numbers are
+    /// recomputed so `#1…#N` always counts up in display order.
+    ///
+    /// Two-pass because single-pass "skip if over cap" would silently drop
+    /// results — we want them pushed down, not omitted, since a user might
+    /// scroll past the top 5.
+    private static func diversify(
+        _ results: [RankedResult],
+        maxPerDomain: Int = 2
+    ) -> [RankedResult] {
+        var primary: [RankedResult] = []
+        var overflow: [RankedResult] = []
+        var counts: [String: Int] = [:]
+
+        for result in results {
+            let host = result.base.hostname
+            let count = counts[host, default: 0]
+            if count < maxPerDomain {
+                primary.append(result)
+                counts[host] = count + 1
+            } else {
+                overflow.append(result)
+            }
+        }
+
+        return (primary + overflow).enumerated().map { (position, r) in
+            RankedResult(base: r.base, rank: position + 1, reason: r.reason)
         }
     }
 
