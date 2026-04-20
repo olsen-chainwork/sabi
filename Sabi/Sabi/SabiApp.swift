@@ -18,15 +18,16 @@ struct SabiApp: App {
     //      `applicationDidFinishLaunching`, which is the canonical spot.
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    /// Observed so the menu bar label re-renders when a background poll
+    /// marks an unread ping (or ContentView.onAppear clears it). Using the
+    /// shared singleton directly — SwiftUI tracks `@Observable` reads.
+    @State private var pingState = PingState.shared
+
     var body: some Scene {
         MenuBarExtra {
             ContentView()
         } label: {
-            if hasMenuBarIconAsset {
-                Image("MenuBarIcon")
-            } else {
-                Image(systemName: "binoculars")
-            }
+            menuBarLabel
         }
         .menuBarExtraStyle(.window)
 
@@ -35,6 +36,28 @@ struct SabiApp: App {
         // popover is the canonical way to open this on macOS.
         Settings {
             SourcesSettingsView()
+        }
+    }
+
+    /// Icon + optional unread dot. The ZStack is topTrailing-aligned so the
+    /// dot rides the upper-right corner like a macOS badge. Offset nudges
+    /// it just past the icon bounds so it reads as a notification marker,
+    /// not a clipped pixel.
+    @ViewBuilder
+    private var menuBarLabel: some View {
+        ZStack(alignment: .topTrailing) {
+            if hasMenuBarIconAsset {
+                Image("MenuBarIcon")
+            } else {
+                Image(systemName: "binoculars")
+            }
+            if pingState.hasUnread {
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 6, height: 6)
+                    .offset(x: 2, y: -2)
+                    .accessibilityLabel("New pick available")
+            }
         }
     }
 

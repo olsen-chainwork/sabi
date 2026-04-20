@@ -1,0 +1,1801 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sabi | Your corner of the web. Quiet by default.</title>
+    <meta
+      name="description"
+      content="Your corner of the web. Quiet by default. A macOS menu bar app that watches your own hand-picked list of sources and pings you when something new lands in your lane."
+    />
+    <meta property="og:title" content="Sabi | Your corner of the web. Quiet by default." />
+    <meta
+      property="og:description"
+      content="Curate your own quiet corner of the web. Sabi is a macOS menu bar app that pings you when something new lands on the sources you actually trust."
+    />
+    <meta property="og:image" content="assets/icon-1024.png" />
+    <link rel="icon" type="image/png" href="assets/icon-512.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9. 144,300. 700,0. 100&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              cream: {
+                50: "#FBF6EC",
+                100: "#F5EDE0",
+                200: "#EADCC5",
+                300: "#D9C3A1",
+                400: "#B79770",
+              },
+              ink: {
+                900: "#2A1F15",
+                800: "#3D2F22",
+                700: "#5A4632",
+                500: "#8A7358",
+                400: "#A89278",
+              },
+              ember: {
+                500: "#C86B2A",
+                600: "#A8541F",
+              },
+            },
+            fontFamily: {
+              display: ['Fraunces', 'Georgia', 'serif'],
+              sans: ['Geist', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: #F5EDE0;
+        color: #2A1F15;
+        font-family: 'Geist', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      /* Paper-grain noise overlay. Fixed to viewport so it never scrolls. */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.045;
+        mix-blend-mode: multiply;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.16  0 0 0 0 0.12  0 0 0 0 0.08  0 0 0 1 0'/></filter><rect width='300' height='300' filter='url(%23n)'/></svg>");
+        background-size: 300px 300px;
+      }
+
+      /* Warm paper-grain backdrop */
+      .grain {
+        position: relative;
+      }
+      .grain::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.35;
+        mix-blend-mode: multiply;
+        background-image: radial-gradient(
+            circle at 20% 20%,
+            rgba(184, 151, 112, 0.18),
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 70%,
+            rgba(200, 107, 42, 0.10),
+            transparent 55%
+          );
+      }
+
+      /* Soft radial vignette for the hero */
+      .hero-bg {
+        background:
+          radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 248, 234, 1) 0%, rgba(245, 237, 224, 0) 70%),
+          linear-gradient(180deg, #FBF6EC 0%, #F5EDE0 100%);
+      }
+
+      /* Display headline: softer serif with subtle italic accent */
+      .headline {
+        font-family: 'Fraunces', Georgia, serif;
+        font-optical-sizing: auto;
+        font-variation-settings: "SOFT" 60, "opsz" 120;
+        letter-spacing: -0.02em;
+        line-height: 0.98;
+      }
+      .headline em {
+        font-style: italic;
+        font-weight: 400;
+        color: #A8541F;
+      }
+
+      /* Scroll-reveal */
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1),
+          transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Orchestrated hero entrance. Fires on page load, not scroll.
+         Every element starts hidden; .loaded on <body> reveals them in
+         a staggered cascade for a single "well-composed moment". */
+      [class*="hero-stagger-"] {
+        opacity: 0;
+        transform: translateY(22px);
+        transition: opacity 1100ms cubic-bezier(0.2, 0.8, 0.2, 1),
+          transform 1100ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      body.loaded .hero-stagger-1 { opacity: 1; transform: none; transition-delay:  60ms; }
+      body.loaded .hero-stagger-2 { opacity: 1; transform: none; transition-delay: 180ms; }
+      body.loaded .hero-stagger-3 { opacity: 1; transform: none; transition-delay: 360ms; }
+      body.loaded .hero-stagger-4 { opacity: 1; transform: none; transition-delay: 540ms; }
+      body.loaded .hero-stagger-5 { opacity: 1; transform: none; transition-delay: 700ms; }
+      body.loaded .hero-stagger-6 { opacity: 1; transform: none; transition-delay: 860ms; }
+
+      /* Hairline borders in warm ink */
+      .hairline {
+        border-color: rgba(42, 31, 21, 0.12);
+      }
+
+      /* Crisper downscaling for the product screenshots.
+         Tells the browser to spend extra cycles on bicubic/lanczos-ish
+         filtering instead of fast nearest-neighbour. */
+      #product img {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: high-quality;
+      }
+
+      /* Terminal / pipeline card */
+      .pipeline {
+        background: #1F1812;
+        color: #F5EDE0;
+        border-radius: 18px;
+        box-shadow:
+          0 30px 60px -24px rgba(42, 31, 21, 0.45),
+          0 2px 0 rgba(255, 255, 255, 0.04) inset;
+      }
+      .pipeline-dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+      }
+
+      /* Cursor blink for typing demo */
+      .caret::after {
+        content: "▎";
+        color: #C86B2A;
+        margin-left: 1px;
+        animation: blink 1s steps(1, end) infinite;
+      }
+      @keyframes blink {
+        50% { opacity: 0; }
+      }
+
+      /* Source pills */
+      .pill {
+        background: rgba(255, 255, 255, 0.55);
+        border: 1px solid rgba(42, 31, 21, 0.08);
+        backdrop-filter: blur(6px);
+      }
+
+      /* Link underline animation */
+      .underlink {
+        background-image: linear-gradient(currentColor, currentColor);
+        background-size: 100% 1px;
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        transition: background-size 240ms ease;
+      }
+      .underlink:hover {
+        background-size: 0% 1px;
+      }
+
+      /* Top-nav links: clean by default, underline grows in on hover */
+      .nav-link {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        color: inherit;
+        transition: color 180ms ease, background-color 180ms ease;
+      }
+      .nav-link::after {
+        content: "";
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 4px;
+        height: 1px;
+        background: currentColor;
+        transform: scaleX(0);
+        transform-origin: left center;
+        transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .nav-link:hover {
+        color: #1a1a1a;
+      }
+      .nav-link:hover::after {
+        transform: scaleX(1);
+      }
+      .nav-link--cta {
+        color: #1a1a1a;
+        background: rgba(0, 0, 0, 0.04);
+      }
+      .nav-link--cta::after {
+        display: none;
+      }
+      .nav-link--cta:hover {
+        background: rgba(0, 0, 0, 0.08);
+      }
+
+      /* Badge ring pulse */
+      @keyframes gentle-pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.03); opacity: 0.95; }
+      }
+      .badge-float {
+        animation: gentle-pulse 6s ease-in-out infinite;
+      }
+
+      /* Subtle floating in hero */
+      @keyframes drift {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+      }
+      .drift {
+        animation: drift 7s ease-in-out infinite;
+      }
+
+      /* Remove default button focus ring, use our own */
+      .btn:focus-visible {
+        outline: 2px solid #A8541F;
+        outline-offset: 3px;
+      }
+
+      ::selection {
+        background: #C86B2A;
+        color: #FBF6EC;
+      }
+
+      /* Mobile tweaks */
+      @media (max-width: 640px) {
+        .headline {
+          letter-spacing: -0.015em;
+        }
+      }
+
+      /* Respect users who don't want motion. */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+
+      /* ───────────────────── Hero word cycle ─────────────────────
+         Seamlessly swaps the headline accent word (Quiet → Curated →
+         Yours → Calm → Focused) with a soft slide + fade. The sizer
+         reserves width for the widest word so the headline never
+         shifts layout. */
+      .word-cycle {
+        display: inline-grid;
+        grid-template-areas: "stack";
+        vertical-align: baseline;
+        line-height: 1;
+      }
+      .word-cycle__sizer,
+      .word-cycle__slot {
+        grid-area: stack;
+        font-style: italic;
+      }
+      .word-cycle__sizer {
+        visibility: hidden;
+        pointer-events: none;
+        display: grid;
+        grid-template-areas: "stack";
+      }
+      .word-cycle__sizer > span {
+        grid-area: stack;
+      }
+      .word-cycle__slot {
+        color: #C86B2A; /* ember-500 */
+        transition:
+          transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+          opacity 340ms ease;
+        will-change: transform, opacity;
+      }
+      .word-cycle__slot.is-exiting {
+        transform: translateY(-0.42em);
+        opacity: 0;
+      }
+      .word-cycle__slot.is-entering {
+        transform: translateY(0.42em);
+        opacity: 0;
+        transition: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .word-cycle__slot,
+        .word-cycle__slot.is-exiting,
+        .word-cycle__slot.is-entering {
+          transition: none;
+          transform: none;
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- ───────────────────────── NAV ───────────────────────── -->
+    <header class="relative z-20">
+      <div class="max-w-6xl mx-auto flex items-center justify-between px-6 pt-6 sm:pt-8">
+        <a href="#top" class="flex items-center gap-3 group">
+          <img
+            src="assets/icon-512.png"
+            alt="Sabi"
+            class="w-9 h-9 rounded-lg shadow-sm"
+          />
+          <span class="headline text-2xl text-ink-900 tracking-tight">Sabi</span>
+        </a>
+        <nav class="hidden sm:flex items-center gap-1 text-sm text-ink-600">
+          <a href="#watch" class="nav-link">Watch</a>
+          <a href="#product" class="nav-link">The app</a>
+          <a href="#demo" class="nav-link">Under the hood</a>
+          <a href="#how" class="nav-link">How it works</a>
+          <a href="#sources" class="nav-link">Sources</a>
+          <span class="mx-2 h-4 w-px bg-ink-900/15" aria-hidden="true"></span>
+          <a
+            href="https://github.com/olsen-chainwork/sabi"
+            class="nav-link nav-link--cta"
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" class="opacity-80">
+              <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            GitHub
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ───────────────────────── HERO ─────────────────────────
+         Asymmetric: headline occupies ~7/10 cols, icon breaks out of its
+         column with absolute positioning and overlaps the headline's
+         negative space. A diagonal accent line anchors the composition. -->
+    <section id="top" class="hero-bg relative overflow-hidden">
+      <!-- Diagonal accent line -->
+      <div
+        class="absolute right-[6%] top-[14%] w-px h-[70%] bg-gradient-to-b from-transparent via-ember-500/30 to-transparent rotate-[8deg] pointer-events-none hidden lg:block"
+      ></div>
+
+      <!-- Oversized icon. Escapes the content box. Hidden on mobile where
+           it competes with the headline; reappears at sm breakpoint. -->
+      <div
+        class="hidden sm:block absolute right-[-4%] lg:right-[2%] top-[18%] lg:top-[10%] w-[320px] lg:w-[460px] xl:w-[520px] pointer-events-none z-0 drift hero-stagger-3"
+        aria-hidden="true"
+      >
+        <div class="absolute -inset-16 rounded-[40%] bg-ember-500/15 blur-[90px]"></div>
+        <img
+          src="assets/icon-1024.png"
+          alt=""
+          class="relative w-full rounded-[28%] shadow-[0_50px_100px_-35px_rgba(42,31,21,0.55)] rotate-[-4deg] badge-float"
+        />
+      </div>
+
+      <div class="max-w-6xl mx-auto px-6 pt-14 pb-16 sm:pt-32 sm:pb-40 relative">
+        <div class="grid grid-cols-12 gap-6">
+          <div class="col-span-12 lg:col-span-8 xl:col-span-7 relative z-10">
+            <div
+              class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-ink-500 mb-10 hero-stagger-1"
+            >
+              <span class="w-8 h-px bg-ember-500/60"></span>
+              <span>A quiet menu bar app · macOS</span>
+            </div>
+
+            <h1
+              class="headline text-[clamp(2.25rem,7vw,6rem)] text-ink-900 hero-stagger-2"
+            >
+              Your corner<br />
+              of the web.<br />
+              <span class="word-cycle" aria-live="polite">
+                <span class="word-cycle__sizer" aria-hidden="true">
+                  <span>Quiet</span>
+                  <span>Curated</span>
+                  <span>Yours</span>
+                  <span>Focused</span>
+                  <span>Calm</span>
+                  <span>Earned</span>
+                </span>
+                <span class="word-cycle__slot" data-words='["Quiet","Curated","Yours","Focused","Calm","Earned"]'>Quiet</span>
+              </span><br />
+              by default.
+            </h1>
+
+            <p
+              class="mt-6 sm:mt-10 text-base sm:text-xl text-ink-700 max-w-xl leading-relaxed hero-stagger-3 relative z-10"
+            >
+              Sabi is a macOS menu bar app that watches <em>your</em> hand-picked
+              list of sources and pings you when something new lands in your
+              lane. Yours, not an algorithm's. Start with 60 curated defaults.
+              Add your own. Disable anything. The list is yours. No feed. No
+              ads. No doomscroll. Just signal.
+            </p>
+
+            <div class="mt-8 sm:mt-12 flex flex-wrap gap-3 items-center hero-stagger-4 relative z-10">
+              <a
+                href="https://github.com/olsen-chainwork/sabi"
+                class="btn inline-flex items-center gap-2 px-5 py-3 rounded-full bg-ink-900 text-cream-50 hover:bg-ink-800 transition text-sm font-medium"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+                  />
+                </svg>
+                View on GitHub
+              </a>
+
+              <a
+                href="#watch"
+                class="btn inline-flex items-center gap-2 px-5 py-3 rounded-full border border-ink-900/20 text-ink-900 hover:bg-cream-100 transition text-sm font-medium"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+                Watch the demo
+              </a>
+
+              <div class="flex items-center gap-2 text-xs text-ink-500 pl-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-ember-500 animate-pulse"></span>
+                macOS 14+ · open source · free
+              </div>
+            </div>
+
+            <!-- Faux menu bar chip. Repositioned to anchor below copy -->
+            <div
+              class="mt-10 sm:mt-14 inline-flex items-center gap-2.5 bg-cream-50 border hairline rounded-full pl-2 pr-4 py-1.5 text-xs text-ink-700 shadow-[0_6px_20px_-8px_rgba(42,31,21,0.25)] hero-stagger-5"
+            >
+              <span class="w-5 h-5 rounded overflow-hidden">
+                <img src="assets/icon-512.png" class="w-full h-full" alt="" />
+              </span>
+              <span class="font-medium text-ink-900">Sabi</span>
+              <span class="text-ink-400">—</span>
+              <span>1 new this week</span>
+              <span class="ml-1 w-1.5 h-1.5 rounded-full bg-ember-500"></span>
+            </div>
+
+            <p class="mt-8 sm:mt-12 text-sm text-ink-500 hero-stagger-6">
+              Built for the OpenAI × Handshake Codex Creator Challenge
+              · April&nbsp;17–30,&nbsp;2026
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── WATCH (VIDEO LOOP) ─────────────────────
+         Real Sabi, sped up 2.5× so the whole pipeline fits in ~11s.
+         MP4 streams first; the <img> fallback covers environments that
+         can't decode MP4 (old browsers, some embed previews). Autoplay
+         requires `muted` — browsers block unmuted autoplay everywhere. -->
+    <section id="watch" class="py-14 sm:py-28 relative bg-cream-50 border-y hairline">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="max-w-2xl mx-auto mb-12 reveal text-center">
+          <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+            In motion
+          </p>
+          <h2
+            class="headline text-3xl sm:text-5xl text-ink-900"
+            style="line-height: 1.02"
+          >
+            Seed to <em>signal.</em>
+          </h2>
+          <p class="mt-5 text-lg text-ink-700 leading-relaxed">
+            Type a few words. Haiku sharpens them. Brave fetches from your
+            curated sources. The ranker reorders. You get a list worth reading
+            — in the time it takes to refill your coffee.
+          </p>
+        </div>
+
+        <div class="max-w-[640px] mx-auto reveal">
+          <div class="rounded-2xl overflow-hidden shadow-[0_30px_80px_-20px_rgba(42,31,21,0.35)] border hairline bg-cream-100">
+            <video
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              class="block w-full h-auto"
+              aria-label="Sabi demo: typing a seed, augmenting it, fetching sources, and ranking results"
+            >
+              <source src="./sabi-demo.mp4" type="video/mp4" />
+              <img
+                src="./sabi-demo.gif"
+                alt="Sabi demo: typing a seed, augmenting it, fetching sources, and ranking results"
+                class="block w-full h-auto"
+              />
+            </video>
+          </div>
+          <p class="mt-4 text-center text-xs text-ink-500">
+            Sped up 2× — about 30 seconds in real life.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── PRODUCT SHOTS ─────────────────────────
+         The real thing. Cream section with aspect-aware cards. -->
+    <section id="product" class="py-14 sm:py-28 relative">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="max-w-2xl mb-14 reveal">
+          <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+            The real thing
+          </p>
+          <h2
+            class="headline text-3xl sm:text-5xl text-ink-900"
+            style="line-height: 1.02"
+          >
+            Right in your <em>menu bar.</em>
+          </h2>
+          <p class="mt-5 text-lg text-ink-700 leading-relaxed">
+            No dock icon, no separate window, no tab to forget. Sabi lives as a
+            small icon in the top-right corner of your menu bar. Click it
+            when you want a read, ignore it the rest of the time.
+          </p>
+        </div>
+
+        <!-- Aspect-aware product-shot layout on a warm-dark band.
+             Dark cards are a subtle lift off the ink-900 base so the cream-
+             tinted screenshots blend into the same palette. -->
+
+        <!-- Row 1. Menu bar strip: full-width horizontal band. -->
+        <figure
+          class="bg-cream-50/60 border hairline rounded-3xl px-6 sm:px-10 py-8 sm:py-9 relative overflow-hidden reveal mb-5 sm:mb-6"
+        >
+          <div class="grid sm:grid-cols-[auto_1fr] gap-6 sm:gap-10 items-center">
+            <div class="shrink-0">
+              <div class="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-ink-500 mb-1">
+                <span class="w-4 h-px bg-ember-500/60"></span>
+                In your menu bar
+              </div>
+              <p class="text-sm text-ink-500 leading-relaxed sm:max-w-[14rem]">
+                No dock noise. Just a quiet icon where apps live.
+              </p>
+            </div>
+            <div class="relative min-w-0 max-w-[640px] sm:ml-auto">
+              <img
+                src="./screenshots/menubar.png"
+                alt="Sabi's menu-bar icon sitting in the real macOS menu bar"
+                class="w-full rounded-md ring-1 ring-ink-900/10"
+                onerror="this.closest('figure').querySelector('.placeholder').style.display='flex'; this.style.display='none';"
+              />
+              <div
+                class="placeholder hidden w-full aspect-[16/1] rounded-md bg-gradient-to-br from-ink-900 to-ink-700 items-center justify-center text-center p-3"
+              >
+                <div class="text-cream-100 text-xs font-mono">screenshots/menubar.png</div>
+              </div>
+            </div>
+          </div>
+        </figure>
+
+        <!-- Row 2. Popover (hero) + Settings (supporting). -->
+        <div class="grid grid-cols-12 gap-5 sm:gap-6">
+          <figure
+            class="col-span-12 lg:col-span-7 bg-cream-50/60 border hairline rounded-3xl p-6 sm:p-10 relative overflow-hidden reveal"
+          >
+            <figcaption class="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-ink-500 mb-6">
+              <span class="w-4 h-px bg-ember-500/60"></span>
+              The popover
+            </figcaption>
+            <div class="relative mx-auto max-w-sm">
+              <img
+                src="./screenshots/popover.png"
+                alt="Sabi popover showing a ranked list of articles"
+                class="w-full rounded-xl shadow-[0_30px_60px_-20px_rgba(42,31,21,0.3)] ring-1 ring-ink-900/10"
+                onerror="this.closest('figure').querySelector('.placeholder').style.display='flex'; this.style.display='none';"
+              />
+              <div
+                class="placeholder hidden w-full aspect-[3/4] rounded-xl bg-gradient-to-br from-ink-900 to-ink-700 border border-cream-100/10 flex-col items-center justify-center text-center p-6"
+              >
+                <div class="text-cream-100 font-medium">Popover screenshot</div>
+                <div class="text-cream-200/60 text-xs mt-1 font-mono">
+                  screenshots/popover.png
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-ink-700 mt-6 leading-relaxed max-w-md mx-auto text-center">
+              Type a focus. Sabi searches your sources, ranks, and hands back
+              the top reads. One click to open.
+            </p>
+          </figure>
+
+          <figure
+            class="col-span-12 lg:col-span-5 bg-cream-50/60 border hairline rounded-3xl p-6 sm:p-8 relative reveal flex flex-col"
+          >
+            <figcaption class="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-ink-500 mb-6">
+              <span class="w-4 h-px bg-ember-500/60"></span>
+              Your sources
+            </figcaption>
+            <div class="relative mx-auto max-w-[280px] flex-1 flex items-start">
+              <img
+                src="./screenshots/settings.png"
+                alt="Sabi sources settings. Add, disable, remove"
+                class="w-full rounded-lg shadow-[0_20px_40px_-15px_rgba(42,31,21,0.25)] ring-1 ring-ink-900/10"
+                onerror="this.closest('figure').querySelector('.placeholder').style.display='flex'; this.style.display='none';"
+              />
+              <div
+                class="placeholder hidden w-full aspect-[3/4] rounded-lg bg-gradient-to-br from-ink-900 to-ink-700 border border-cream-100/10 flex-col items-center justify-center text-center p-4"
+              >
+                <div class="text-cream-100 font-medium text-sm">Settings screenshot</div>
+                <div class="text-cream-200/60 text-xs mt-1 font-mono">
+                  screenshots/settings.png
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-ink-700 mt-6 leading-relaxed">
+              Add. Disable. Remove. Toggle background polling. Every knob is
+              exposed. No hidden defaults.
+            </p>
+          </figure>
+        </div>
+
+        <!-- Row 3. Notification: wide-ish banner, framed at its natural ratio. -->
+        <figure
+          class="bg-cream-50/60 border hairline rounded-3xl p-6 sm:p-10 relative reveal mt-5 sm:mt-6"
+        >
+          <div class="grid lg:grid-cols-[1fr_auto] gap-8 lg:gap-12 items-center">
+            <div class="order-2 lg:order-1 max-w-md">
+              <div class="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-ink-500 mb-3">
+                <span class="w-4 h-px bg-ember-500/60"></span>
+                Quiet pings
+              </div>
+              <h3 class="headline text-2xl text-ink-900 mb-3" style="line-height:1.15">
+                One ping. Only when it matters.
+              </h3>
+              <p class="text-sm text-ink-700 leading-relaxed">
+                Real macOS banner. Click it → opens the article. Max one every
+                few hours, only when something new cracks your top five.
+              </p>
+            </div>
+            <div class="order-1 lg:order-2 relative mx-auto w-full max-w-[360px]">
+              <img
+                src="./screenshots/notification.png"
+                alt="Native macOS notification from Sabi: 'Sabi has a pick'"
+                class="w-full rounded-xl shadow-[0_20px_40px_-15px_rgba(42,31,21,0.25)] ring-1 ring-ink-900/10"
+                onerror="this.closest('figure').querySelector('.placeholder').style.display='flex'; this.style.display='none';"
+              />
+              <div
+                class="placeholder hidden w-full aspect-[16/7] rounded-xl bg-gradient-to-br from-ink-900 to-ink-700 border border-cream-100/10 flex-col items-center justify-center text-center p-4"
+              >
+                <div class="text-cream-100 font-medium text-sm">Notification screenshot</div>
+                <div class="text-cream-200/60 text-xs mt-1 font-mono">
+                  screenshots/notification.png
+                </div>
+              </div>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── BRING YOUR OWN WEB ─────────────────────────
+         The thesis. Curation is the product. The curated 60 are training wheels. -->
+    <section id="customize" class="py-16 sm:py-32 bg-ink-900 text-cream-100 relative overflow-hidden">
+      <!-- Warm glow accent -->
+      <div
+        class="absolute top-[-20%] right-[-10%] w-[70%] h-[80%] rounded-full bg-ember-500/10 blur-[120px] pointer-events-none"
+      ></div>
+
+      <div class="max-w-6xl mx-auto px-6 relative">
+        <div class="grid lg:grid-cols-[1.1fr_1fr] gap-16 items-center">
+          <div class="reveal">
+            <p class="text-xs uppercase tracking-[0.22em] text-ember-500 mb-6">
+              The thesis
+            </p>
+            <h2
+              class="headline text-3xl sm:text-5xl lg:text-6xl"
+              style="line-height: 1"
+            >
+              Bring your own <em class="text-ember-500">web.</em>
+            </h2>
+            <p class="mt-8 text-lg leading-relaxed text-cream-200/85 max-w-xl">
+              Algorithms decide what you read. Newsletters decide when.
+              Recommendation feeds converge everyone toward the same five
+              voices.
+            </p>
+            <p class="mt-5 text-lg leading-relaxed text-cream-200/85 max-w-xl">
+              <span class="text-cream-100 font-medium">Sabi flips the default.</span>
+              You decide who's worth listening to. Sabi just checks for new
+              work, quietly, on your behalf. The curation <em class="italic">is</em>
+              the product.
+            </p>
+
+            <!-- Three mini-actions: add, disable, remove -->
+            <div class="mt-12 space-y-4 max-w-lg">
+              <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-white/10">
+                <div class="w-9 h-9 rounded-full bg-ember-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8A877" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"></path>
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-cream-100 font-medium text-sm">Add a source</div>
+                  <div class="text-cream-200/60 text-sm mt-0.5">
+                    Paste any domain. A niche blog, a preprint server, your
+                    favorite newsletter's archive. Sabi starts watching it in
+                    the next poll.
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-white/10">
+                <div class="w-9 h-9 rounded-full bg-ember-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8A877" stroke-width="2">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M6 6l12 12"></path>
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-cream-100 font-medium text-sm">Disable a default</div>
+                  <div class="text-cream-200/60 text-sm mt-0.5">
+                    Toggle off anything from the curated 60. Defaults strike
+                    through, list stays clean, your preference persists.
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-white/10">
+                <div class="w-9 h-9 rounded-full bg-ember-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8A877" stroke-width="2">
+                    <path d="M6 6l12 12M18 6L6 18"></path>
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-cream-100 font-medium text-sm">Start from scratch</div>
+                  <div class="text-cream-200/60 text-sm mt-0.5">
+                    Hit "Clear all" and build the web you want from zero.
+                    Sabi works just as well with three sources as sixty.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: pseudo-screenshot of the sources editor -->
+          <div class="reveal relative">
+            <div class="relative bg-cream-50 rounded-2xl overflow-hidden shadow-[0_60px_120px_-30px_rgba(0,0,0,0.6)] text-ink-900">
+              <!-- window chrome -->
+              <div class="flex items-center gap-2 px-4 py-3 border-b hairline bg-cream-100">
+                <span class="w-3 h-3 rounded-full bg-[#E56A5A]"></span>
+                <span class="w-3 h-3 rounded-full bg-[#EFC544]"></span>
+                <span class="w-3 h-3 rounded-full bg-[#68C060]"></span>
+                <span class="ml-3 text-xs text-ink-500 font-medium">Sources</span>
+              </div>
+
+              <div class="p-6">
+                <!-- Add input -->
+                <div class="flex gap-2 mb-5">
+                  <div class="flex-1 px-3 py-2 rounded-md border hairline bg-cream-50 text-sm text-ink-500 flex items-center gap-2">
+                    <span class="text-ink-400">+</span>
+                    <span class="font-mono text-ink-700">danwang.co</span>
+                    <span class="ml-auto w-px h-4 bg-ember-500 animate-pulse"></span>
+                  </div>
+                  <button class="px-3 py-2 rounded-md bg-ember-500 text-cream-50 text-sm font-medium">
+                    Add
+                  </button>
+                </div>
+
+                <p class="text-xs uppercase tracking-wider text-ink-500 mb-3">
+                  Your sources (4)
+                </p>
+                <ul class="space-y-1 mb-6 text-sm">
+                  <li class="flex items-center gap-3 py-2 px-2 rounded-md hover:bg-cream-100">
+                    <span class="w-1 h-1 rounded-full bg-ember-500"></span>
+                    <span class="font-mono text-ink-800">danluu.com</span>
+                    <span class="ml-auto text-ink-400 text-lg">×</span>
+                  </li>
+                  <li class="flex items-center gap-3 py-2 px-2 rounded-md hover:bg-cream-100">
+                    <span class="w-1 h-1 rounded-full bg-ember-500"></span>
+                    <span class="font-mono text-ink-800">jvns.ca</span>
+                    <span class="ml-auto text-ink-400 text-lg">×</span>
+                  </li>
+                  <li class="flex items-center gap-3 py-2 px-2 rounded-md bg-cream-100">
+                    <span class="w-1 h-1 rounded-full bg-ember-500"></span>
+                    <span class="font-mono text-ink-800">danwang.co</span>
+                    <span class="ml-auto text-ember-500 text-xs font-medium">new</span>
+                  </li>
+                  <li class="flex items-center gap-3 py-2 px-2 rounded-md hover:bg-cream-100">
+                    <span class="w-1 h-1 rounded-full bg-ember-500"></span>
+                    <span class="font-mono text-ink-800">palladiummag.com</span>
+                    <span class="ml-auto text-ink-400 text-lg">×</span>
+                  </li>
+                </ul>
+
+                <p class="text-xs uppercase tracking-wider text-ink-500 mb-3">
+                  Curated defaults (60)
+                </p>
+                <ul class="space-y-1 text-sm">
+                  <li class="flex items-center gap-3 py-1.5 px-2">
+                    <input type="checkbox" checked class="accent-ember-500" readonly />
+                    <span class="font-mono text-ink-700">arxiv.org</span>
+                  </li>
+                  <li class="flex items-center gap-3 py-1.5 px-2">
+                    <input type="checkbox" checked class="accent-ember-500" readonly />
+                    <span class="font-mono text-ink-700">stratechery.com</span>
+                  </li>
+                  <li class="flex items-center gap-3 py-1.5 px-2 opacity-40">
+                    <input type="checkbox" class="accent-ember-500" readonly />
+                    <span class="font-mono text-ink-700 line-through">techcrunch.com</span>
+                    <span class="ml-auto text-ink-500 text-[11px]">disabled</span>
+                  </li>
+                  <li class="flex items-center gap-3 py-1.5 px-2">
+                    <input type="checkbox" checked class="accent-ember-500" readonly />
+                    <span class="font-mono text-ink-700">lesswrong.com</span>
+                  </li>
+                  <li class="text-center text-xs text-ink-500 pt-2">+ 56 more</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Caption pointing at it -->
+            <p class="text-xs text-cream-200/60 mt-5 text-center">
+              The sources editor. In the real app, with a gear-click away.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── LIVE PIPELINE DEMO ───────────────────────── -->
+    <section id="demo" class="py-14 sm:py-28 relative">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="max-w-2xl mb-12 reveal">
+          <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+            Under the hood
+          </p>
+          <h2
+            class="headline text-3xl sm:text-5xl text-ink-900"
+            style="line-height: 1.02"
+          >
+            Your vague seed, <em>quietly refined.</em>
+          </h2>
+          <p class="mt-5 text-lg text-ink-700 leading-relaxed">
+            Type "AI" or "black holes" or "industrial policy". Sabi turns it
+            into a practitioner-framed focus, searches a curated web, and ranks
+            what comes back. All in a handful of seconds.
+          </p>
+        </div>
+
+        <!-- Pipeline terminal card -->
+        <div class="pipeline p-6 sm:p-8 reveal">
+          <!-- Header dots -->
+          <div class="flex items-center gap-2 pb-4 border-b border-white/5">
+            <span class="pipeline-dot bg-[#E56A5A]"></span>
+            <span class="pipeline-dot bg-[#EFC544]"></span>
+            <span class="pipeline-dot bg-[#68C060]"></span>
+            <span class="ml-3 font-mono text-[11px] text-cream-200/50 tracking-wider"
+              >sabi · live pipeline</span
+            >
+          </div>
+
+          <div class="font-mono text-sm sm:text-[15px] leading-[1.9] mt-5 space-y-1">
+            <!-- Step 1: seed -->
+            <div class="reveal">
+              <span class="text-ember-500">▸</span>
+              <span class="text-cream-200/50">seed:</span>
+              <span id="seed-text" class="text-cream-100 caret">AI</span>
+            </div>
+
+            <!-- Step 2: augment -->
+            <div class="reveal mt-4">
+              <span class="text-cream-200/50 text-xs uppercase tracking-wider"
+                >→ augment (Haiku)</span
+              >
+            </div>
+            <div class="reveal pl-4 border-l border-ember-500/40 ml-1">
+              <span class="text-cream-100" id="focus-text"
+                >AI agent architectures: planning loops, tool use, and long-horizon task decomposition</span
+              >
+            </div>
+
+            <!-- Step 3: retrieve -->
+            <div class="reveal mt-5">
+              <span class="text-cream-200/50 text-xs uppercase tracking-wider"
+                >→ retrieve (Brave · site-restricted · past month)</span
+              >
+            </div>
+            <div class="pl-4 text-cream-200/60 text-[13px]">
+              searching 58 curated sources…
+            </div>
+
+            <!-- Step 4: rank -->
+            <div class="reveal mt-5">
+              <span class="text-cream-200/50 text-xs uppercase tracking-wider"
+                >→ rank (Haiku · diversify)</span
+              >
+            </div>
+            <ol class="pl-4 mt-2 space-y-2">
+              <li class="flex gap-3 reveal">
+                <span class="text-ember-500 font-medium">1.</span>
+                <div>
+                  <div class="text-cream-100">
+                    A Deep Dive into ReAct: Reasoning + Acting in Language
+                    Models
+                  </div>
+                  <div class="text-cream-200/50 text-xs">arxiv.org</div>
+                </div>
+              </li>
+              <li class="flex gap-3 reveal">
+                <span class="text-ember-500 font-medium">2.</span>
+                <div>
+                  <div class="text-cream-100">
+                    Building effective agents. Lessons from production
+                  </div>
+                  <div class="text-cream-200/50 text-xs">anthropic.com</div>
+                </div>
+              </li>
+              <li class="flex gap-3 reveal">
+                <span class="text-ember-500 font-medium">3.</span>
+                <div>
+                  <div class="text-cream-100">
+                    The unreasonable effectiveness of long-horizon planners
+                  </div>
+                  <div class="text-cream-200/50 text-xs">distill.pub</div>
+                </div>
+              </li>
+            </ol>
+
+            <div class="mt-6 pt-4 border-t border-white/5 text-cream-200/50 text-xs">
+              ↳ every 4h in the background, Sabi re-runs this and only pings
+              you if something <span class="text-ember-500">new</span> cracks
+              the top five.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── FEATURE TRIO ───────────────────────── -->
+    <section class="py-14 sm:py-24 bg-cream-50 border-y hairline" id="why">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="max-w-2xl mb-16 reveal">
+          <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+            Principles
+          </p>
+          <h2 class="headline text-3xl sm:text-5xl text-ink-900">
+            Four things we <em>wouldn't</em> compromise on.
+          </h2>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-x-14 gap-y-14">
+          <div class="reveal">
+            <div
+              class="w-10 h-10 rounded-full bg-ember-500/15 flex items-center justify-center mb-5"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A8541F" stroke-width="1.8">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7v5l3 2"></path>
+              </svg>
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">Quiet by default.</h3>
+            <p class="text-ink-700 leading-relaxed">
+              One notification at most every few hours, only when something new
+              cracks your top five. Your attention isn't the product.
+            </p>
+          </div>
+
+          <div class="reveal">
+            <div
+              class="w-10 h-10 rounded-full bg-ember-500/15 flex items-center justify-center mb-5"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A8541F" stroke-width="1.8">
+                <path d="M12 4v16M4 12h16"></path>
+              </svg>
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">Your list, your taste.</h3>
+            <p class="text-ink-700 leading-relaxed">
+              60 curated defaults to get you started. But the point is to
+              make it yours. Add a blog nobody's heard of. Disable the ones
+              you already read daily. Remove what doesn't fit. The curation
+              is the product.
+            </p>
+          </div>
+
+          <div class="reveal">
+            <div
+              class="w-10 h-10 rounded-full bg-ember-500/15 flex items-center justify-center mb-5"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A8541F" stroke-width="1.8">
+                <rect x="3" y="4" width="18" height="13" rx="2"></rect>
+                <path d="M8 21h8M12 17v4"></path>
+              </svg>
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">Native, not a tab.</h3>
+            <p class="text-ink-700 leading-relaxed">
+              SwiftUI menu bar app with <code class="font-mono text-[13px] text-ember-600 bg-ember-500/10 px-1.5 py-0.5 rounded whitespace-nowrap">MenuBarExtra</code>,
+              <code class="font-mono text-[13px] text-ember-600 bg-ember-500/10 px-1.5 py-0.5 rounded whitespace-nowrap">NSBackgroundActivityScheduler</code>,
+              real macOS notifications. Lives where your work lives.
+            </p>
+          </div>
+
+          <div class="reveal">
+            <div
+              class="w-10 h-10 rounded-full bg-ember-500/15 flex items-center justify-center mb-5"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A8541F" stroke-width="1.8">
+                <path d="M12 15l-3 -3 3 -3 3 3z"></path>
+                <path d="M19 12a7 7 0 1 1 -14 0a7 7 0 0 1 14 0z"></path>
+              </svg>
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">Yours to shape.</h3>
+            <p class="text-ink-700 leading-relaxed">
+              Add a source. Disable a default. Turn off background polling.
+              Every knob is exposed. Because one-size-fits-all feeds are how we
+              got here in the first place.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── HOW IT WORKS ───────────────────────── -->
+    <section id="how" class="py-14 sm:py-28 grain relative">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="max-w-2xl mb-14 reveal">
+          <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+            How it works
+          </p>
+          <h2 class="headline text-3xl sm:text-5xl text-ink-900">
+            Seed → focus → signal.
+          </h2>
+        </div>
+
+        <ol class="relative space-y-14 pl-16 sm:pl-20 border-l-2 border-ember-500/30">
+          <li class="reveal relative">
+            <div
+              class="absolute -left-[46px] sm:-left-[54px] top-1 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-ember-500 text-cream-50 font-mono text-sm font-medium flex items-center justify-center shadow-[0_4px_12px_-4px_rgba(168,84,31,0.5)]"
+            >
+              1
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">You type a seed.</h3>
+            <p class="text-ink-700 max-w-xl leading-relaxed">
+              Vague is fine. "black holes", "industrial policy", "compilers".
+              Sabi doesn't need a prompt. It needs a direction.
+            </p>
+          </li>
+
+          <li class="reveal relative">
+            <div
+              class="absolute -left-[46px] sm:-left-[54px] top-1 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-ember-500 text-cream-50 font-mono text-sm font-medium flex items-center justify-center shadow-[0_4px_12px_-4px_rgba(168,84,31,0.5)]"
+            >
+              2
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">Haiku refines it.</h3>
+            <p class="text-ink-700 max-w-xl leading-relaxed">
+              A 15–30 word practitioner-framed focus, never a textbook
+              definition. You see the refinement and can override it with
+              <em>use-as-is</em>.
+            </p>
+          </li>
+
+          <li class="reveal relative">
+            <div
+              class="absolute -left-[46px] sm:-left-[54px] top-1 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-ember-500 text-cream-50 font-mono text-sm font-medium flex items-center justify-center shadow-[0_4px_12px_-4px_rgba(168,84,31,0.5)]"
+            >
+              3
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">
+              Brave searches the curated web.
+            </h3>
+            <p class="text-ink-700 max-w-xl leading-relaxed">
+              Site-restricted to your allowlist, past-week or past-month
+              freshness, article-shape filter that drops homepages and hub
+              pages.
+            </p>
+          </li>
+
+          <li class="reveal relative">
+            <div
+              class="absolute -left-[46px] sm:-left-[54px] top-1 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-ember-500 text-cream-50 font-mono text-sm font-medium flex items-center justify-center shadow-[0_4px_12px_-4px_rgba(168,84,31,0.5)]"
+            >
+              4
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">
+              Haiku ranks and diversifies.
+            </h3>
+            <p class="text-ink-700 max-w-xl leading-relaxed">
+              A second pass caps two results per source so the list doesn't
+              collapse into a single author's feed.
+            </p>
+          </li>
+
+          <li class="reveal relative">
+            <div
+              class="absolute -left-[46px] sm:-left-[54px] top-1 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-ember-500 text-cream-50 font-mono text-sm font-medium flex items-center justify-center shadow-[0_4px_12px_-4px_rgba(168,84,31,0.5)]"
+            >
+              5
+            </div>
+            <h3 class="headline text-2xl text-ink-900 mb-2">
+              Every 4 hours, quietly.
+            </h3>
+            <p class="text-ink-700 max-w-xl leading-relaxed">
+              <code class="font-mono text-[13px] text-ember-600 bg-ember-500/10 px-1.5 py-0.5 rounded whitespace-nowrap"
+                >NSBackgroundActivityScheduler</code
+              >
+              re-checks with past-week freshness, compares against a seen-log,
+              and fires a single macOS notification only for brand-new top
+              hits. Click it → opens the article.
+            </p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── SOURCES CLOUD ───────────────────────── -->
+    <section id="sources" class="py-14 sm:py-28 bg-cream-100 border-y hairline">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="max-w-2xl mb-12 reveal">
+          <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+            The starter pack
+          </p>
+          <h2 class="headline text-3xl sm:text-5xl text-ink-900">
+            Start with 60.<br /><em>Replace with yours.</em>
+          </h2>
+          <p class="mt-5 text-lg text-ink-700 leading-relaxed">
+            These are the defaults we ship with. A hand-assembled starting
+            point across AI labs, economics, long-form essays, alignment
+            thought, indie blogs, and academic preprints. Good enough to feel
+            useful on day one, but the point is to shape it into the list
+            <em>you</em> trust.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-2.5 reveal">
+          <!-- AI / labs -->
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">arxiv.org</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">anthropic.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">openai.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">deepmind.google</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">distill.pub</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">karpathy.github.io</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">lilianweng.github.io</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">thegradient.pub</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">alignmentforum.org</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">lesswrong.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">astralcodexten.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">dwarkeshpatel.com</span>
+
+          <!-- Essays / indie -->
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">stratechery.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">paulgraham.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">danluu.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">jvns.ca</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">fly.io/blog</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">mattklein123.dev</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">patrickcollison.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">slatestarcodex.com</span>
+
+          <!-- Economics / policy -->
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">nber.org</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">voxeu.org</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">econlib.org</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">marginalrevolution.com</span>
+
+          <!-- Science -->
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">quantamagazine.org</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">nature.com</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">sciencemag.org</span>
+
+          <!-- Theory / complexity -->
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">cacm.acm.org</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">ncatlab.org</span>
+          <span class="pill rounded-full px-3.5 py-1.5 text-sm text-ink-800">scottaaronson.blog</span>
+
+          <span
+            class="rounded-full px-3.5 py-1.5 text-sm text-ink-500 italic"
+          >
+            + 30 more. And whatever you add.
+          </span>
+        </div>
+
+        <div class="mt-10 reveal">
+          <a
+            href="#customize"
+            class="inline-flex items-center gap-2 text-sm text-ink-800 underlink hover:text-ember-600"
+          >
+            <span>See how to make it yours</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── TECH STACK STRIPE ───────────────────────── -->
+    <section class="py-14 sm:py-24">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="grid md:grid-cols-[1fr_1.4fr] gap-12 items-start">
+          <div class="reveal">
+            <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+              Built with
+            </p>
+            <h2 class="headline text-3xl sm:text-4xl text-ink-900">
+              Native Swift.<br />Modern LLMs.
+            </h2>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-8 text-sm reveal">
+            <div>
+              <div class="text-ink-900 font-medium mb-1">Swift 6 · SwiftUI</div>
+              <div class="text-ink-500 text-[13px] leading-relaxed">
+                <code class="font-mono">MainActor</code> default isolation,
+                <code class="font-mono">@Observable</code> stores
+              </div>
+            </div>
+            <div>
+              <div class="text-ink-900 font-medium mb-1">MenuBarExtra</div>
+              <div class="text-ink-500 text-[13px] leading-relaxed">
+                Native popover, <code class="font-mono">LSUIElement</code>, no
+                dock icon
+              </div>
+            </div>
+            <div>
+              <div class="text-ink-900 font-medium mb-1">Claude Haiku 4.5</div>
+              <div class="text-ink-500 text-[13px] leading-relaxed">
+                Seed refinement + ranking
+              </div>
+            </div>
+            <div>
+              <div class="text-ink-900 font-medium mb-1">Brave Search API</div>
+              <div class="text-ink-500 text-[13px] leading-relaxed">
+                Site-restricted, freshness-filtered retrieval
+              </div>
+            </div>
+            <div>
+              <div class="text-ink-900 font-medium mb-1">NSBackgroundActivity</div>
+              <div class="text-ink-500 text-[13px] leading-relaxed">
+                Battery-aware scheduler, ~4h polling
+              </div>
+            </div>
+            <div>
+              <div class="text-ink-900 font-medium mb-1">Claude Code</div>
+              <div class="text-ink-500 text-[13px] leading-relaxed">
+                First Swift project, shipped in 3 days
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── ROADMAP ─────────────────────────
+         What's already shipped vs. what's coming. The CLI is the headline
+         coming-soon item. Teased with a tiny mock terminal. -->
+    <section id="roadmap" class="py-14 sm:py-24 bg-cream-100 border-t hairline">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="max-w-2xl mb-14 reveal">
+          <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+            Roadmap
+          </p>
+          <h2 class="headline text-3xl sm:text-5xl text-ink-900">
+            Shipped · <em>coming soon.</em>
+          </h2>
+          <p class="mt-5 text-lg text-ink-700 leading-relaxed">
+            Sabi is open source and moving fast. Here's what's live today
+            and what's next.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Shipped -->
+          <div class="bg-cream-50 rounded-2xl p-7 border hairline reveal">
+            <div class="flex items-center gap-3 mb-5">
+              <span class="w-2 h-2 rounded-full bg-[#68C060]"></span>
+              <span class="text-xs uppercase tracking-[0.14em] text-ink-500">Shipped</span>
+            </div>
+            <ul class="space-y-3 text-sm text-ink-700">
+              <li class="flex items-start gap-3">
+                <span class="text-ember-500 mt-1">✓</span>
+                <span><span class="font-medium text-ink-900">macOS menu bar app</span>. SwiftUI + MenuBarExtra, LSUIElement, no dock icon</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-ember-500 mt-1">✓</span>
+                <span><span class="font-medium text-ink-900">Seed refinement</span>. Haiku-powered practitioner-framed focus, with use-as-is override</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-ember-500 mt-1">✓</span>
+                <span><span class="font-medium text-ink-900">Site-restricted retrieval</span>. Brave search across your allowlist, freshness + article-shape filtering</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-ember-500 mt-1">✓</span>
+                <span><span class="font-medium text-ink-900">Haiku ranking + diversification</span>. Caps results per source so the list stays varied</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-ember-500 mt-1">✓</span>
+                <span><span class="font-medium text-ink-900">Background polling</span>. NSBackgroundActivityScheduler every ~4h, seen-log, one ping per new top hit</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-ember-500 mt-1">✓</span>
+                <span><span class="font-medium text-ink-900">Editable sources</span>. Add, disable, remove, persisted across launches</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Coming soon -->
+          <div class="bg-cream-50 rounded-2xl p-7 border hairline reveal">
+            <div class="flex items-center gap-3 mb-5">
+              <span class="w-2 h-2 rounded-full bg-ember-500 animate-pulse"></span>
+              <span class="text-xs uppercase tracking-[0.14em] text-ink-500">Coming soon</span>
+            </div>
+            <ul class="space-y-3 text-sm text-ink-700">
+              <li class="flex items-start gap-3">
+                <span class="text-ink-400 mt-1">→</span>
+                <span>
+                  <span class="font-medium text-ink-900">Homebrew install</span> —
+                  <code class="font-mono text-[12px] text-ink-900 bg-cream-100 px-1.5 py-0.5 rounded">brew install --cask sabi</code>.
+                  Zero-friction menu bar install via a public tap.
+                </span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-ink-400 mt-1">→</span>
+                <span>
+                  <span class="font-medium text-ink-900">sabi CLI</span>. A keyboard-first twin of the menu bar app.
+                  <code class="font-mono text-[12px] text-ink-900 bg-cream-100 px-1.5 py-0.5 rounded">sabi fetch</code>,
+                  <code class="font-mono text-[12px] text-ink-900 bg-cream-100 px-1.5 py-0.5 rounded">sabi sources</code>,
+                  <code class="font-mono text-[12px] text-ink-900 bg-cream-100 px-1.5 py-0.5 rounded">sabi watch</code>.
+                  Shares the same core pipeline.
+                </span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-ink-400 mt-1">→</span>
+                <span><span class="font-medium text-ink-900">Save for later</span>. Star an article from the popover; Sabi stashes it locally, no server, no account</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="text-ink-400 mt-1">→</span>
+                <span><span class="font-medium text-ink-900">Multi-focus</span>. Track two or three learning lanes at once, with separate seen-logs</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── HOW IT GOT BUILT ─────────────────────────
+         First Swift project, 3 days, seven slices. Numbers strip + four
+         plain-English stories about what broke and what fixed it. Written
+         in Chandler's voice, mined from BUILD-NOTES.md. -->
+    <section id="build-story" class="py-14 sm:py-28 bg-cream-50/70 border-t hairline">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="max-w-2xl mb-14 reveal">
+          <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">
+            How it got built
+          </p>
+          <h2 class="headline text-3xl sm:text-5xl text-ink-900">
+            First Swift project,<br /><em>built end to end.</em>
+          </h2>
+        </div>
+
+        <!-- Numbers strip -->
+        <div class="grid grid-cols-3 gap-4 mb-14 reveal">
+          <div class="bg-cream-50 border hairline rounded-2xl px-5 py-6 text-center">
+            <div class="headline text-3xl sm:text-4xl text-ember-500">10+</div>
+            <div class="text-[11px] uppercase tracking-[0.14em] text-ink-500 mt-2">
+              Slices shipped
+            </div>
+          </div>
+          <div class="bg-cream-50 border hairline rounded-2xl px-5 py-6 text-center">
+            <div class="headline text-3xl sm:text-4xl text-ink-900">17</div>
+            <div class="text-[11px] uppercase tracking-[0.14em] text-ink-500 mt-2">
+              Git commits
+            </div>
+          </div>
+          <div class="bg-cream-50 border hairline rounded-2xl px-5 py-6 text-center">
+            <div class="headline text-3xl sm:text-4xl text-ink-900">0</div>
+            <div class="text-[11px] uppercase tracking-[0.14em] text-ink-500 mt-2">
+              Swift lines I'd written before
+            </div>
+          </div>
+        </div>
+
+        <!-- Editorial CRISPE block: knowledge-forward. What the method IS. -->
+        <div class="reveal">
+          <div class="relative bg-cream-50 border hairline rounded-3xl px-8 sm:px-14 py-12 sm:py-16 overflow-hidden">
+            <!-- Oversized decorative quote mark, warm ember, peeking behind the headline -->
+            <span
+              aria-hidden="true"
+              class="absolute -top-6 left-6 sm:left-10 font-display text-[180px] sm:text-[240px] leading-none text-ember-500/10 select-none pointer-events-none"
+            >&ldquo;</span>
+
+            <p class="relative text-[11px] uppercase tracking-[0.22em] text-ember-600 font-medium mb-8">
+              The method
+            </p>
+
+            <blockquote class="relative">
+              <p class="headline text-3xl sm:text-[40px] leading-[1.15] text-ink-900 max-w-3xl">
+                <em class="text-ember-500">CRISPE</em> is how you ship real
+                software with an AI pair. Thin slices,
+                <em class="text-ember-500">end to end,</em> every time.
+              </p>
+            </blockquote>
+
+            <div class="relative mt-10 grid md:grid-cols-[minmax(0,1fr)_auto] gap-10 md:gap-14 items-start">
+              <div class="max-w-xl space-y-5 text-[15.5px] text-ink-700 leading-[1.75]">
+                <p>
+                  CRISPE is a workflow for building with coding agents
+                  without losing the thread. The rule is simple: work in
+                  the smallest slice that can still run on its own, and
+                  don't move forward until that slice can answer four
+                  questions out loud.
+                </p>
+                <p>
+                  A slice isn't a feature. A slice is the narrowest
+                  vertical cut through the system that still makes the
+                  app a little more useful than it was an hour ago. You
+                  plan it in the design doc, implement it with the
+                  agent, read the full diff yourself, and reconcile it
+                  back to the doc. Then you do it again.
+                </p>
+                <p>
+                  When a slice can't pass the four gates, you don't ship
+                  it and you don't push through. You go
+                  <em class="text-ink-900 not-italic font-medium">back to the doc,</em>
+                  rescope, and try again. That loop is the whole trick.
+                  Sabi is what came out of three days of it.
+                </p>
+              </div>
+
+              <!-- The four gates every slice has to pass -->
+              <div class="md:border-l md:pl-8 hairline md:w-[320px]">
+                <p class="text-[11px] uppercase tracking-[0.22em] text-ink-500 mb-5">
+                  The four gates
+                </p>
+                <ul class="space-y-5">
+                  <li class="flex items-start gap-3">
+                    <span class="mt-[6px] shrink-0 w-1.5 h-1.5 rounded-full bg-ember-500"></span>
+                    <span class="text-[14px] text-ink-800 leading-snug">
+                      Is the next slice scoped
+                      <em class="text-ember-600 not-italic font-medium">thin</em>?
+                    </span>
+                  </li>
+                  <li class="flex items-start gap-3">
+                    <span class="mt-[6px] shrink-0 w-1.5 h-1.5 rounded-full bg-ember-500"></span>
+                    <span class="text-[14px] text-ink-800 leading-snug">
+                      Does it work
+                      <em class="text-ember-600 not-italic font-medium">end to end</em>
+                      in the real app, right now?
+                    </span>
+                  </li>
+                  <li class="flex items-start gap-3">
+                    <span class="mt-[6px] shrink-0 w-1.5 h-1.5 rounded-full bg-ember-500"></span>
+                    <span class="text-[14px] text-ink-800 leading-snug">
+                      Have I read
+                      <em class="text-ember-600 not-italic font-medium">every line</em>
+                      of the diff?
+                    </span>
+                  </li>
+                  <li class="flex items-start gap-3">
+                    <span class="mt-[6px] shrink-0 w-1.5 h-1.5 rounded-full bg-ember-500"></span>
+                    <span class="text-[14px] text-ink-800 leading-snug">
+                      Does it still match the
+                      <em class="text-ember-600 not-italic font-medium">design doc</em>?
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <p class="relative mt-12 text-[12px] uppercase tracking-[0.2em] text-ink-500">
+              <span class="text-ink-700">A workflow for shipping with AI agents.</span>
+              Small, honest, repeatable.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── CREATOR CARD ─────────────────────────
+         Personal lead bio. No school listed. GitHub social.
+         Placeholder monogram in ember. Can swap to a real photo later
+         by dropping a file in assets/ and replacing the div. -->
+    <section id="creator" class="py-14 sm:py-24">
+      <div class="max-w-3xl mx-auto px-6">
+        <div class="bg-cream-50 border hairline rounded-3xl p-8 sm:p-10 reveal">
+          <div class="flex flex-col sm:flex-row gap-8 sm:gap-10 items-start">
+            <!-- Monogram avatar. Swap to <img> when photo is ready -->
+            <div class="shrink-0">
+              <div class="w-24 h-24 rounded-full bg-gradient-to-br from-ember-500 to-ember-600 flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(200,107,42,0.55)]">
+                <span class="headline text-4xl text-cream-50 font-display font-[500]" style="letter-spacing:-0.02em;">
+                  CO
+                </span>
+              </div>
+            </div>
+
+            <div class="flex-1">
+              <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-2">
+                Who made this
+              </p>
+              <h3 class="headline text-3xl text-ink-900 leading-tight">
+                Chandler Olsen
+              </h3>
+              <p class="mt-4 text-[15px] text-ink-700 leading-relaxed">
+                I was thinking about pagers. The actual physical thing.
+                The kind that used to beep when somebody wanted you, and
+                then you went and found out what they wanted. What if a
+                computer could page me the same way, but only about stuff
+                I'd actually want to know about? Not another notification.
+                A ping, only when it's earned.
+              </p>
+              <p class="mt-4 text-[15px] text-ink-700 leading-relaxed">
+                The truth is, I already do the hunt by hand. A new paper
+                drops, a founder posts a build log, a demo ships that
+                bends what was possible, and I go looking. Blog posts
+                buried under ten other posts. Threads someone replied to
+                a month ago. Write-ups on corners of the web most feeds
+                ignore. When I find the right one it scratches an edge I
+                didn't know I had. That's the signal I'm chasing.
+              </p>
+              <p class="mt-4 text-[15px] text-ink-700 leading-relaxed">
+                But the hunt costs real time. Sabi is that hunt running
+                in the background. It watches the sources I'd already
+                check and pings me only when something new lands in my
+                lane. That's it. That's the whole thing.
+              </p>
+
+              <div class="mt-7 flex flex-wrap items-center gap-3">
+                <a
+                  href="https://github.com/olsen-chainwork"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline text-sm text-ink-900 hover:bg-cream-100 transition"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                  </svg>
+                  GitHub
+                </a>
+                <a
+                  href="https://github.com/olsen-chainwork/sabi"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline text-sm text-ink-900 hover:bg-cream-100 transition"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 7h16M4 12h16M4 17h10"/>
+                  </svg>
+                  Sabi source
+                </a>
+                <a
+                  href="https://github.com/sponsors/olsen-chainwork"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-ember-500/40 bg-ember-500/5 text-sm text-ink-900 hover:bg-ember-500/10 transition"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C86B2A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                  </svg>
+                  Support the build
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── FINAL CTA ───────────────────────── -->
+    <section class="relative overflow-hidden">
+      <div class="absolute inset-0 hero-bg grain"></div>
+      <div class="relative max-w-3xl mx-auto px-6 py-16 sm:py-32 text-center">
+        <div class="reveal">
+          <img
+            src="assets/icon-512.png"
+            alt=""
+            class="mx-auto w-20 h-20 rounded-2xl mb-8 shadow-md"
+          />
+          <h2 class="headline text-3xl sm:text-6xl text-ink-900">
+            Reading better,<br /><em>quietly.</em>
+          </h2>
+          <p class="mt-6 text-lg text-ink-700 max-w-lg mx-auto leading-relaxed">
+            Sabi is open source. Clone the repo, build it in Xcode, and you're
+            one menu bar icon away from a quieter web.
+          </p>
+          <div class="mt-10 flex flex-wrap justify-center gap-3">
+            <a
+              href="https://github.com/olsen-chainwork/sabi"
+              class="btn inline-flex items-center gap-2 px-6 py-3 rounded-full bg-ink-900 text-cream-50 hover:bg-ink-800 transition text-sm font-medium"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+                />
+              </svg>
+              Clone the repo
+            </a>
+            <a
+              href="#demo"
+              class="btn inline-flex items-center gap-2 px-6 py-3 rounded-full border border-ink-900/20 text-ink-900 hover:bg-cream-100 transition text-sm font-medium"
+            >
+              Watch the demo
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── FOOTER ───────────────────────── -->
+    <footer class="border-t hairline">
+      <div
+        class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row justify-between gap-6 text-sm text-ink-500"
+      >
+        <div class="flex items-center gap-3">
+          <img src="assets/icon-512.png" class="w-7 h-7 rounded-md" alt="" />
+          <span>Sabi, a quiet companion for what you're curious about.</span>
+        </div>
+        <div class="flex items-center gap-5">
+          <a href="https://github.com/olsen-chainwork/sabi" class="hover:text-ink-900 transition">GitHub</a>
+          <a href="https://github.com/sponsors/olsen-chainwork" class="hover:text-ink-900 transition">Support</a>
+          <a href="#how" class="hover:text-ink-900 transition">How it works</a>
+          <span class="text-ink-400">© 2026 Chandler Olsen</span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- ───────────────────────── REVEAL SCRIPT ───────────────────────── -->
+    <script>
+      // Orchestrated hero entrance fires once the page has painted.
+      window.requestAnimationFrame(() => {
+        // Two RAFs guarantees the browser commits initial styles before transition.
+        window.requestAnimationFrame(() => document.body.classList.add("loaded"));
+      });
+
+      // Honor reduced-motion: instantly reveal everything, skip all transitions.
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.body.classList.add("loaded");
+      }
+
+      const reveals = document.querySelectorAll(".reveal");
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("in");
+              io.unobserve(entry.target);
+            }
+          }
+        },
+        { threshold: 0.08 }
+      );
+      // Stagger: add slight transition-delay by index within each parent
+      const parents = new Map();
+      reveals.forEach((el) => {
+        io.observe(el);
+        const parent = el.parentElement;
+        const idx = parents.get(parent) || 0;
+        el.style.transitionDelay = `${Math.min(idx * 70, 420)}ms`;
+        parents.set(parent, idx + 1);
+      });
+
+      // Hero word cycle: rotate through accent words with a slide+fade.
+      // Skips entirely under prefers-reduced-motion (CSS already handles
+      // the static state).
+      (() => {
+        const slot = document.querySelector(".word-cycle__slot");
+        if (!slot) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        let words;
+        try {
+          words = JSON.parse(slot.dataset.words || "[]");
+        } catch (_) {
+          return;
+        }
+        if (!Array.isArray(words) || words.length < 2) return;
+        let i = 0;
+        const EXIT_MS = 420;
+        const HOLD_MS = 2600;
+        function cycle() {
+          slot.classList.add("is-exiting");
+          setTimeout(() => {
+            i = (i + 1) % words.length;
+            slot.textContent = words[i];
+            slot.classList.remove("is-exiting");
+            slot.classList.add("is-entering");
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => slot.classList.remove("is-entering"));
+            });
+          }, EXIT_MS);
+        }
+        // Wait until the hero entrance settles before starting.
+        setTimeout(() => {
+          cycle();
+          setInterval(cycle, HOLD_MS + EXIT_MS);
+        }, 1800);
+      })();
+
+      // Typing animation for the seed
+      const seedEl = document.getElementById("seed-text");
+      const focusEl = document.getElementById("focus-text");
+      const seeds = [
+        { typed: "AI", focus: "AI agent architectures: planning loops, tool use, and long-horizon task decomposition" },
+        { typed: "black holes", focus: "recent observational and theoretical advances in black hole thermodynamics, Hawking radiation, and event horizon structure" },
+        { typed: "industrial policy", focus: "contemporary industrial policy in the US and EU: semiconductor investment, strategic reshoring, and the economics of CHIPS-style subsidies" },
+        { typed: "compilers", focus: "modern compiler research: MLIR, incremental compilation, and language-server integration for fast feedback loops" },
+      ];
+      let seedIdx = 0;
+      async function typeSeed() {
+        const { typed, focus } = seeds[seedIdx];
+        // clear
+        seedEl.textContent = "";
+        focusEl.style.opacity = "0.2";
+        focusEl.textContent = seeds[(seedIdx - 1 + seeds.length) % seeds.length].focus;
+        await sleep(300);
+        // type letter by letter
+        for (const ch of typed) {
+          seedEl.textContent += ch;
+          await sleep(90 + Math.random() * 60);
+        }
+        await sleep(500);
+        // swap focus with fade
+        focusEl.style.transition = "opacity 500ms ease";
+        focusEl.style.opacity = "0";
+        await sleep(350);
+        focusEl.textContent = focus;
+        focusEl.style.opacity = "1";
+        await sleep(3400);
+        seedIdx = (seedIdx + 1) % seeds.length;
+        typeSeed();
+      }
+      function sleep(ms) {
+        return new Promise((r) => setTimeout(r, ms));
+      }
+      // Only animate if the demo section is in the viewport once. Avoid burning CPU scrolled away.
+      const demoEl = document.getElementById("demo");
+      const demoIO = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            typeSeed();
+            demoIO.disconnect();
+          }
+        },
+        { threshold: 0.2 }
+      );
+      demoIO.observe(demoEl);
+    </script>
+  </body>
+</html>

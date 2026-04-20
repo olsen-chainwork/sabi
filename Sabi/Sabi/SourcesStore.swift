@@ -5,14 +5,20 @@
 //  Slice 6 — user edits on top of the curated source list.
 //
 //  Model: curated baseline is immutable (DomainAllowlist.suffixes). The
-//  user can (a) add their own domains, and (b) disable any domain — curated
-//  or their own — by flipping it off. Two arrays on disk:
+//  user can (a) add their own domains, (b) disable any domain — curated
+//  or their own — by flipping it off, and (c) delete a curated domain
+//  outright so it disappears from the settings list entirely. Three
+//  collections on disk:
 //
-//    userAdditions: [String]  — domains the user typed in, in add order
-//    userRemovals:  Set<String> — domains the user has flipped off
+//    userAdditions:     [String]       — domains the user typed in, in add order
+//    userRemovals:      Set<String>    — domains the user has flipped off
+//    curatedDeletions:  Set<String>    — curated defaults the user hard-deleted
 //
 //  The effective list Sabi searches is:
-//    (curated ∪ additions) - removals
+//    (curated - curatedDeletions - userRemovals) ∪ (additions - userRemovals)
+//
+//  "Reset to defaults" clears all three. That's the escape hatch if someone
+//  deletes a curated source they actually wanted.
 //
 //  Persisted in UserDefaults under versioned keys so we can migrate later.
 //
@@ -27,10 +33,12 @@ final class SourcesStore {
 
     private let additionsKey = "sabi.sources.userAdditions.v1"
     private let removalsKey = "sabi.sources.userRemovals.v1"
+    private let curatedDeletionsKey = "sabi.sources.curatedDeletions.v1"
     private let defaults: UserDefaults
 
     private(set) var userAdditions: [String] = []
     private(set) var userRemovals: Set<String> = []
+    private(set) var curatedDeletions: Set<String> = []
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -40,17 +48,29 @@ final class SourcesStore {
         if let removals = defaults.array(forKey: removalsKey) as? [String] {
             self.userRemovals = Set(removals)
         }
+        if let deletions = defaults.array(forKey: curatedDeletionsKey) as? [String] {
+            self.curatedDeletions = Set(deletions)
+        }
     }
 
     // MARK: - Effective list
 
     /// The actual list Sabi uses for retrieval. Curated items come first
     /// (preserving the curated order), then user additions in add order.
-    /// Disabled domains are filtered out.
+    /// Disabled domains and hard-deleted curated entries are filtered out.
     var effectiveSuffixes: [String] {
-        let curatedKept = DomainAllowlist.suffixes.filter { !userRemovals.contains($0) }
+        let curatedKept = DomainAllowlist.suffixes.filter {
+            !userRemovals.contains($0) && !curatedDeletions.contains($0)
+        }
         let addedKept = userAdditions.filter { !userRemovals.contains($0) }
         return curatedKept + addedKept
+    }
+
+    /// Curated defaults the user hasn't deleted. Use this in the settings UI
+    /// to render the visible curated list (toggled-off entries stay; deleted
+    /// ones disappear).
+    var visibleCurated: [String] {
+        DomainAllowlist.suffixes.filter { !curatedDeletions.contains($0) }
     }
 
     // MARK: - Queries
@@ -86,12 +106,24 @@ final class SourcesStore {
         return true
     }
 
-    /// Remove a user-added domain entirely. No effect on curated domains
-    /// (use `setEnabled(_:enabled:)` to toggle curated items instead).
+    /// Remove a user-added domain entirely. No effect on curated domains —
+    /// use `deleteCuratedDomain(_:)` for those, or `setEnabled(_:enabled:)`
+    /// to just toggle them off.
     func removeUserDomain(_ suffix: String) {
         guard userAdditions.contains(suffix) else { return }
         userAdditions.removeAll { $0 == suffix }
         // Also clean up any stale removal entry for this domain.
+        userRemovals.remove(suffix)
+        save()
+    }
+
+    /// Hard-delete a curated default. It disappears from the settings list
+    /// and is excluded from retrieval. "Reset to defaults" brings it back.
+    func deleteCuratedDomain(_ suffix: String) {
+        guard DomainAllowlist.suffixes.contains(suffix) else { return }
+        curatedDeletions.insert(suffix)
+        // Delete supersedes toggle-off; drop any stale removal entry so the
+        // row doesn't look "disabled and deleted" if ever restored.
         userRemovals.remove(suffix)
         save()
     }
@@ -107,10 +139,26 @@ final class SourcesStore {
         save()
     }
 
-    /// Wipe user edits. Every curated domain is re-enabled; every user addition is removed.
+    /// Wipe every user edit. All curated defaults come back (including any
+    /// the user deleted); every user addition is removed; every toggle-off
+    /// is re-enabled.
     func resetToDefaults() {
         userAdditions = []
         userRemovals = []
+        curatedDeletions = []
+        save()
+    }
+
+    /// Remove every user-added domain in one shot. Curated toggles and
+    /// curated deletions are preserved — this only touches your own additions.
+    /// Use `resetToDefaults()` when you want the total wipe.
+    func clearUserAdditions() {
+        guard !userAdditions.isEmpty else { return }
+        // Drop any stale removal entries for the cleared adds so re-adding
+        // later starts from a clean state.
+        let cleared = Set(userAdditions)
+        userAdditions = []
+        userRemovals.subtract(cleared)
         save()
     }
 
@@ -119,6 +167,7 @@ final class SourcesStore {
     private func save() {
         defaults.set(userAdditions, forKey: additionsKey)
         defaults.set(Array(userRemovals), forKey: removalsKey)
+        defaults.set(Array(curatedDeletions), forKey: curatedDeletionsKey)
     }
 
     // MARK: - Normalization

@@ -16,9 +16,10 @@ nonisolated enum AugmentPrompt {
     You help a learner crystallize a vague "what I'm learning right now" seed into a crisp, specific learning focus that a retrieval system can use to find the best related resources.
 
     Input: a short, possibly vague seed like "AI stuff I'm learning", "coding agents", or "pasta".
-    Output: 1–2 sentences, 15–30 words total. Shorter is better if you can still name specific concepts, frameworks, techniques, named resources, or open questions the person is likely grappling with.
+    Output: one tight sentence, 12–22 words, maximum 160 characters including spaces. Retrieval breaks on longer queries, so stay under that ceiling even if you have to drop a qualifier. Shorter is better when you can still name specific concepts, frameworks, techniques, named resources, or open questions the person is likely grappling with.
 
     Rules:
+    - Hard length limit: ≤ 160 characters. Count as you write. If you go over, cut adjectives or a trailing clause.
     - Be concrete. Prefer named concepts, frameworks, and techniques over categories.
     - If the seed is a broad category (a single word like "economics" or "physics"), narrow aggressively to a specific current debate, sub-discipline, or named school of thought. Do NOT output a textbook definition or an encyclopedic overview.
     - If the seed implies a software/engineering domain, lean on named methodologies, papers, or tools.

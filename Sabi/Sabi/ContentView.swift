@@ -57,6 +57,12 @@ struct ContentView: View {
     @State private var errorMessage: String? = nil
     @State private var spinnerPhrase: String = "Pulling it into focus…"
 
+    /// First-run welcome card. Flips to `true` the first time the user
+    /// dismisses the card (or commits an intent via augment / use as-is),
+    /// and sticks forever after that. `@AppStorage` gives us a one-line
+    /// UserDefaults binding without plumbing another store through.
+    @AppStorage("sabi.hasSeenWelcome.v1") private var hasSeenWelcome: Bool = false
+
     // Slice 3+4 retrieval state (scoped to the saved view).
     @State private var ranked: [Ranker.RankedResult] = []
     @State private var isRetrieving: Bool = false
@@ -128,6 +134,10 @@ struct ContentView: View {
 
     private var idleView: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if !hasSeenWelcome {
+                welcomeCard
+            }
+
             Text("What's caught your attention lately?")
                 .font(.headline)
             TextField(
@@ -152,6 +162,47 @@ struct ContentView: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
+    }
+
+    /// One-time welcome. Not a modal, not an onboarding sheet — a dismissible
+    /// card above the intent field. Rationale: an accessory app should feel
+    /// lightweight on first run. No splash, no multi-step tour. Just a
+    /// sentence of orientation so the empty text field isn't intimidating.
+    private var welcomeCard: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "hand.wave.fill")
+                .foregroundStyle(.tint)
+                .font(.title3)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Welcome to Sabi")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Text("Tell Sabi what's caught your attention. It'll watch your sources and ping you only when something brand-new is worth your time.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 4)
+            Button {
+                hasSeenWelcome = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Dismiss")
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.accentColor.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.accentColor.opacity(0.25), lineWidth: 1)
+        )
     }
 
     // MARK: - Augmenting
@@ -361,11 +412,19 @@ struct ContentView: View {
         if intents.hasIntent && mode == .idle {
             mode = .saved
         }
+        // Opening the popover is the "I see it" signal — clear any unread
+        // ping so the menu bar dot goes away immediately. If the user came
+        // in because of a notification tap, the dot disappearing the moment
+        // the popover appears is exactly the right feedback loop.
+        PingState.shared.markRead()
     }
 
     private func augment() {
         guard !trimmedSeed.isEmpty else { return }
         errorMessage = nil
+        // Any real intent-entry action retires the welcome card — the user
+        // has clearly oriented themselves and doesn't need to see it again.
+        hasSeenWelcome = true
         // Pick a fresh spinner phrase so repeat runs feel alive.
         spinnerPhrase = Self.spinnerPhrases.randomElement() ?? "Sharpening your focus…"
         mode = .augmenting
@@ -390,6 +449,9 @@ struct ContentView: View {
     private func useSeedAsIs() {
         guard !trimmedSeed.isEmpty else { return }
         intents.save(trimmedSeed)
+        // Committing an intent — via augment or use-as-is — retires the
+        // welcome card. See augment() for the mirroring call.
+        hasSeenWelcome = true
         errorMessage = nil
         ranked = []
         retrievalError = nil

@@ -197,6 +197,39 @@ Each slice is **thin + end-to-end**. No horizontal layers. No building all the p
 
 ---
 
+## Slice 11 — `sabi` CLI (post-contest)
+
+**Why it exists:** the landing page frames Sabi as *your* corner of the web — users bringing their own domains, editing sources, scripting their own pings. A menu bar popover is the right surface for *reading* a ping; it's the wrong surface for power users who want to `grep`, pipe, cron, or SSH into their taste. A CLI closes that gap and turns Sabi from an app into a tool. Explicitly **out of scope for the April 30 contest submission** — this is a post-contest slice the landing page advertises as "Coming soon" in the roadmap strip.
+
+**Deliverable:** a `sabi` binary on `$PATH` that shares the exact same pipeline (augment → retrieve → rank → seen-log) as the menu bar app, with three subcommands:
+
+- `sabi fetch "<seed>"` — one-shot: refine the seed, search curated sources, print ranked results to stdout (title, URL, domain, published date). Respects the same allowlist the menu bar app uses.
+- `sabi sources <add|remove|list|disable|enable> [domain]` — the same sources editor, on the command line. Writes to the same UserDefaults/JSON the app reads from, so edits from either side stay in sync.
+- `sabi watch` — runs the background poller in the foreground, printing a one-line log each cycle and a notification-equivalent line when a new top-5 unseen hit lands. Ctrl-C to stop. Useful for `tmux` or a launchd plist.
+
+**Architecture:** the pipeline (`AugmentFlow`, `RetrievalEngine`, `RankingEngine`, `SourcesStore`, `SeenLog`) moves into a shared Swift package — call it `SabiCore` — with zero SwiftUI/AppKit imports. The existing macOS app links `SabiCore`; the new CLI target links `SabiCore` plus `ArgumentParser`. Both read the same `Secrets.swift` and the same on-disk state, so a `sabi sources add danwang.co` in the terminal shows up in the popover's sources sheet after a reload.
+
+**Code touched:** new `Packages/SabiCore/` Swift package; move `Augment*`, `Retrieval*`, `Ranking*`, `Sources*`, `SeenLog*` into it; new `Sabi/CLI/` executable target wired to the same scheme; README gets a `brew tap` / install line; landing-page roadmap card promotes "sabi CLI" from "coming soon" to "shipped" once this lands.
+
+**Verification:**
+- `sabi fetch "industrial policy"` returns the same top-5 the menu bar app would, printed as clean text.
+- `sabi sources add danwang.co` → open the app → sources sheet shows `danwang.co` enabled. And vice versa.
+- `sabi watch` running in tmux for 4+ hours prints exactly one "new hit" line matching what the app's notification would have said.
+- Both targets build clean in Xcode, both targets share one `Secrets.swift`.
+
+**Risks:**
+- Swift Package Manager + Xcode target wiring is fiddly the first time. Budget a half-day just for package layout.
+- The seen-log and sources store were written against `UserDefaults` — CLI processes don't share the app's `UserDefaults` suite by default. Need a shared container (App Group) or migrate both to a JSON file in `~/Library/Application Support/Sabi/`.
+- Anthropic + Brave keys in a CLI: ship with `SABI_ANTHROPIC_KEY` / `SABI_BRAVE_KEY` env-var fallbacks alongside the existing `Secrets.swift` path.
+
+**Budget impact:** ~$0 new runtime cost (same pipeline, same per-call price). One-time dev effort: ~2 days of real work.
+
+**Day budget:** post-contest. Not on the April 30 critical path.
+
+**Gate:** do not start this before submission ships. Landing page advertises it as planned; users who care will ask for it and that's the signal to build.
+
+---
+
 ## Summary table
 
 | # | Slice | Days | Budget | Cuttable? |
@@ -208,6 +241,7 @@ Each slice is **thin + end-to-end**. No horizontal layers. No building all the p
 | 5 | Feedback + daily cap | 8–9 | ~$0.20 | No |
 | 6 | Scheduler / auto-trigger | 10 | $0 | **Yes** — ship manual-only |
 | 7 | Polish + onboarding + landing + pitch | 11–13 | $0 | No |
+| 11 | `sabi` CLI | post-contest | ~$0 | Deferred by design |
 | | **Total projected runtime spend** | | **< $1** | |
 
 Leaves ~$39 of the $40.56 as safety margin. Spend projection is for dev + demo week; if it runs high we still have an order of magnitude of headroom.
@@ -236,3 +270,4 @@ From Dex's CRISPE + our own locked decisions:
 - **2026-04-18 (late morning):** Post-feature polish pass — 5 small UX papercuts fixed. Commit `4118b49`.
 - **2026-04-18 (midday):** Retrieval diversity fix — all-arxiv top-5 symptom. Root cause was batch-order pool starvation in Retrieval, not ranker bias. Added round-robin-by-host in Retrieval + 2-per-canonical-domain cap in Ranker. Commits `2fe9068`, `cabf48d`.
 - **2026-04-19 onward:** Post-feature roadmap reframed into 3 new slices — **Slice 8 (visual polish):** paw icon integration + UI papercuts. **Slice 9 (speed):** end-to-end latency profiling, likely parallelizing Brave batches and caching augment output. **Slice 10 (ideas):** brainstorm + pick 1–2 cool additions for the contest window. Shipping prep (landing page, pitch video, README screenshots, Handshake submission, distribution story) is parallel to these.
+- **2026-04-19 (landing page reframe):** Landing page v2 rebuilt around *user curation as the thesis* — new "Bring your own web" section, sources heading changed from "Who Sabi listens to" to "Start with 60. Replace with yours.", roadmap strip added promoting a CLI as next. Formalized that plan as **Slice 11 (`sabi` CLI, post-contest):** extract the pipeline into a shared `SabiCore` Swift package, ship a `sabi` binary with `fetch` / `sources` / `watch` subcommands, shared state with the menu bar app. Not on the April 30 critical path; advertised as "Coming soon" on the landing page.

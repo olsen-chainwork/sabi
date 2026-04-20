@@ -148,5 +148,9 @@ final class BackgroundPoller {
             hostname: winner.base.hostname,
             url: winner.base.url
         )
+        // Light up the menu bar icon's red dot. If the user missed or
+        // dismissed the banner, the dot keeps the signal alive until they
+        // open the popover.
+        PingState.shared.markUnread()
     }
 }

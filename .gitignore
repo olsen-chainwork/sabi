@@ -49,3 +49,14 @@ Package.resolved
 .vscode/
 .idea/
 node_modules/
+
+# ---------- Landing page (website/) ----------
+# Local preview renders from _screenshot.py — not for commit.
+website/_preview/
+website/_screenshot.py
+website/_crop_screenshots.py
+
+# ---------- Raw screenshot captures ----------
+# Timestamped dumps from ⌘⇧4. Curated screenshots (menubar/popover/
+# settings/notification.png) are tracked; the raw captures are scratch.
+screenshots/Screenshot *.png

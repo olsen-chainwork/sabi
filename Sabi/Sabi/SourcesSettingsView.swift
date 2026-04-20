@@ -4,16 +4,21 @@
 //
 //  Slice 6 — `.settings { }` scene body.
 //
-//  Shows the curated baseline with per-row on/off toggles, the user's own
-//  additions (with a trash button), and a text field to add new domains.
-//  A "Reset to defaults" button nukes user edits back to the curated list.
+//  Shows the curated baseline with per-row on/off toggles AND a trash
+//  icon for hard-delete, the user's own additions (each with a trash
+//  button, plus a "Clear all" destructive action in the section header),
+//  and a text field to add new domains. A "Reset to defaults" button at
+//  the bottom brings back everything the user has deleted or toggled off.
 //
 //  Design choices:
-//    - Disabled curated domains stay visible with toggle off, so users can
-//      see what they've turned off and flip it back inline (vs. hiding and
-//      making them hunt for a "restore" screen).
+//    - Toggle-off keeps the row visible in the curated list (so the user
+//      can flip it back inline). Trash-delete hides it entirely — useful
+//      when a source is wrong/outdated and the user wants it gone.
 //    - User additions render in a separate section above curated so they
 //      feel like a first-class user space, not a footnote.
+//    - "Clear all" on the additions header carries a warning triangle and
+//      a confirmation dialog because it can't be undone. Per-row trash
+//      has no confirmation because "Reset to defaults" is the undo.
 //    - Monospaced domain text — reads as configuration, not prose.
 //
 
@@ -24,6 +29,7 @@ struct SourcesSettingsView: View {
     @State private var polling = PollingPrefs.shared
     @State private var newDomain: String = ""
     @State private var showResetConfirm: Bool = false
+    @State private var showClearAdditionsConfirm: Bool = false
     @State private var addError: String? = nil
     @State private var isChecking: Bool = false
     @State private var lastCheckMessage: String? = nil
@@ -42,16 +48,56 @@ struct SourcesSettingsView: View {
             addSection
 
             if !store.userAdditions.isEmpty {
-                Section("Your additions (\(store.userAdditions.count))") {
+                Section {
                     ForEach(store.userAdditions, id: \.self) { domain in
                         userRow(domain)
                     }
+                } header: {
+                    HStack(spacing: 8) {
+                        Text("Your additions (\(store.userAdditions.count))")
+                        Spacer()
+                        Button(role: .destructive) {
+                            showClearAdditionsConfirm = true
+                        } label: {
+                            Label("Clear all", systemImage: "exclamationmark.triangle.fill")
+                                .labelStyle(.titleAndIcon)
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.callout)
+                        .help("Removes every domain you've added. Can't be undone.")
+                    }
+                }
+                .confirmationDialog(
+                    "Clear all \(store.userAdditions.count) domains you've added?",
+                    isPresented: $showClearAdditionsConfirm
+                ) {
+                    Button("Clear all", role: .destructive) {
+                        store.clearUserAdditions()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will permanently remove every domain you've added. Curated sources and their on/off states aren't touched. Can't be undone.")
                 }
             }
 
-            Section("Curated defaults (\(DomainAllowlist.suffixes.count))") {
-                ForEach(DomainAllowlist.suffixes, id: \.self) { domain in
+            Section {
+                ForEach(store.visibleCurated, id: \.self) { domain in
                     curatedRow(domain)
+                }
+            } header: {
+                HStack(spacing: 8) {
+                    Text("Curated defaults (\(store.visibleCurated.count))")
+                    if !store.curatedDeletions.isEmpty {
+                        Text("\(store.curatedDeletions.count) deleted")
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                    }
+                }
+            } footer: {
+                if !store.curatedDeletions.isEmpty {
+                    Text("\(store.curatedDeletions.count) curated source\(store.curatedDeletions.count == 1 ? "" : "s") hidden. \"Reset to defaults\" below brings them back.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -68,7 +114,7 @@ struct SourcesSettingsView: View {
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    Text("Removes every domain you've added and re-enables every curated source you've turned off. Can't be undone.")
+                    Text("Removes every domain you've added, re-enables every curated source you've turned off, and restores any curated defaults you've deleted. Can't be undone.")
                 }
             }
         }
@@ -154,6 +200,14 @@ struct SourcesSettingsView: View {
                     .strikethrough(store.isDisabled(domain))
             }
             .toggleStyle(.switch)
+            Spacer()
+            Button(role: .destructive) {
+                store.deleteCuratedDomain(domain)
+            } label: {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .help("Delete this curated source. \"Reset to defaults\" brings it back.")
         }
     }
 

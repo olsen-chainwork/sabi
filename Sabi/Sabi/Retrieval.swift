@@ -19,9 +19,17 @@
 //  (e.g. 15 domains) is fragile — a batch full of long domain names
 //  like `applieddivinitystudies.com` blows past the limit while a
 //  batch of short ones wastes budget. So we pack by character budget
-//  instead: domains accrete into a batch until adding the next would
-//  exceed ~250 chars of site-clause, leaving ~150 for the intent plus
-//  wrapping. Self-tunes as the allowlist grows.
+//  instead: domains accrete into a batch until the site-clause would
+//  blow the budget. The budget itself is sized *dynamically* per call,
+//  based on the actual intent length — a short intent leaves lots of
+//  room for sites, a long intent cuts the per-batch count down (which
+//  fires more HTTP rounds, but never 422s).
+//
+//  Intents longer than `maxIntentLength` get truncated at a word boundary
+//  before we build the query. This is a last-resort guard: Haiku's
+//  augment prompt targets ~15-30 words (≤ ~200 chars), but it occasionally
+//  runs long. Truncating here is better than erroring at Brave — the user
+//  still gets results, and the focus string in the UI is untouched.
 //
 //  Batches fire serially — Brave's free tier rate-limits to ~1 req/sec
 //  and will 429 on simultaneous bursts. Results are unioned and URL-deduped.
@@ -37,10 +45,24 @@
 import Foundation
 
 nonisolated enum Retrieval {
-    /// Max length of the `site:a OR site:b OR …` clause we'll send in one
-    /// Brave query. Brave's hard limit on `q` is 400; we reserve ~150
-    /// for the intent and the wrapping parens/space.
-    private static let maxSiteClauseLength = 250
+    /// Brave's hard limit on the `q` param.
+    private static let braveQueryMax = 400
+
+    /// Reserved for ` ()` wrapping the site clause plus a small safety
+    /// margin. Keeps us well inside the 400-char ceiling even if Brave's
+    /// parser counts things slightly differently than we do.
+    private static let queryOverhead = 12
+
+    /// If the refined intent somehow exceeds this, truncate at a word
+    /// boundary before retrieval. Leaves ≥ 80 chars for at least one
+    /// reasonable site clause batch. The visible UI focus is not touched.
+    private static let maxIntentLength = braveQueryMax - queryOverhead - 80 // 308
+
+    /// Minimum per-batch site-clause budget. If the intent is so long
+    /// that the dynamic budget would fall below this, we'd be firing
+    /// a Brave round-trip per 1-2 domains — not worth it. This floor
+    /// is paired with the intent-truncation path to keep things sane.
+    private static let minSiteClauseLength = 80
 
     /// Fetch candidates for the given intent from `suffixes` via Brave's
     /// `site:` operator, then return up to `limit` deduped results.
@@ -69,9 +91,24 @@ nonisolated enum Retrieval {
             throw RetrievalError.noAllowedResults
         }
 
+        // Defensive truncation. In practice Haiku usually stays under 200 chars,
+        // but a pathological refined focus has to not nuke retrieval.
+        let intentForQuery = truncateAtWordBoundary(cleaned, max: maxIntentLength)
+        if intentForQuery.count < cleaned.count {
+            print("[Sabi] Retrieval: intent truncated \(cleaned.count) → \(intentForQuery.count) chars to fit Brave's 400-char cap.")
+        }
+
+        // Size the site-clause budget against the *actual* intent length.
+        // Short intent → bigger batches (fewer HTTP calls). Long intent →
+        // smaller batches. Never below the minimum floor.
+        let dynamicClauseBudget = max(
+            minSiteClauseLength,
+            braveQueryMax - intentForQuery.count - queryOverhead
+        )
+
         let batches = packBatches(
             domains: suffixes,
-            maxClauseLength: maxSiteClauseLength
+            maxClauseLength: dynamicClauseBudget
         )
 
         var pooled: [BraveClient.Result] = []
@@ -79,7 +116,7 @@ nonisolated enum Retrieval {
             let siteClause = batch
                 .map { "site:\($0)" }
                 .joined(separator: " OR ")
-            let query = "\(cleaned) (\(siteClause))"
+            let query = "\(intentForQuery) (\(siteClause))"
             let results = try await BraveClient.search(query: query, count: 10, freshness: freshness)
             pooled.append(contentsOf: results)
         }
@@ -170,6 +207,22 @@ nonisolated enum Retrieval {
 
         guard let only = segments.first else { return false }
         return only.contains("-") || only.contains(".") || only.count >= 20
+    }
+
+    /// Truncate a string to at most `max` characters, cutting at the last
+    /// word boundary so we don't leave a half-word at the end. Returns the
+    /// original string untouched if it's already within budget.
+    ///
+    /// Falls back to a hard character cut if there's no whitespace in the
+    /// first `max` chars (shouldn't happen for a refined-sentence focus,
+    /// but be defensive — a focus with no spaces is legal input).
+    private static func truncateAtWordBoundary(_ s: String, max: Int) -> String {
+        guard s.count > max else { return s }
+        let slice = s.prefix(max)
+        if let lastSpace = slice.lastIndex(where: { $0.isWhitespace }) {
+            return String(slice[..<lastSpace])
+        }
+        return String(slice)
     }
 
     /// Pack domains into batches such that no batch's resulting
