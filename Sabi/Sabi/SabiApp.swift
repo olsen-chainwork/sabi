@@ -19,8 +19,14 @@ struct SabiApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("Sabi", systemImage: "binoculars") {
+        MenuBarExtra {
             ContentView()
+        } label: {
+            if hasMenuBarIconAsset {
+                Image("MenuBarIcon")
+            } else {
+                Image(systemName: "binoculars")
+            }
         }
         .menuBarExtraStyle(.window)
 
@@ -30,6 +36,10 @@ struct SabiApp: App {
         Settings {
             SourcesSettingsView()
         }
+    }
+
+    private var hasMenuBarIconAsset: Bool {
+        Bundle.main.image(forResource: NSImage.Name("MenuBarIcon")) != nil
     }
 }
 
