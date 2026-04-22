@@ -4,8 +4,9 @@ A macOS menu bar app that quietly watches the web for what you're learning — a
 
 Built for the **OpenAI × Handshake Codex Creator Challenge** (April 17–30, 2026).
 
-> Landing page · [sabi.netlify.app](https://sabi.netlify.app) *(live after contest deploy)*
-> Demo video · [website/sabi-demo.mp4](website/sabi-demo.mp4)
+![Demo](sabi-demo.gif)
+
+> Landing page · [sabi.netlify.app](https://sabi.netlify.app) _(live after contest deploy)_
 
 ## What Sabi does
 
@@ -20,12 +21,12 @@ No algorithmic feed, no social, no ads. Curated sources, low-frequency pings, co
 
 ## Screenshots
 
-| Menu bar | Popover |
-| --- | --- |
+| Menu bar                                         | Popover                                                      |
+| ------------------------------------------------ | ------------------------------------------------------------ |
 | ![Sabi in the menu bar](screenshots/menubar.png) | ![Sabi popover with ranked results](screenshots/popover.png) |
 
-| Sources settings | Notification |
-| --- | --- |
+| Sources settings                                    | Notification                                                  |
+| --------------------------------------------------- | ------------------------------------------------------------- |
 | ![Sources settings sheet](screenshots/settings.png) | ![Background poll notification](screenshots/notification.png) |
 
 ## Current state
