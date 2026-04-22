@@ -6,7 +6,7 @@ Built for the **OpenAI × Handshake Codex Creator Challenge** (April 17–30, 20
 
 ![Demo](sabi-demo.gif)
 
-> Landing page · [sabi.netlify.app](https://sabi.netlify.app) _(live after contest deploy)_
+> Landing page · [sabi-mac.netlify.app](https://sabi-mac.netlify.app)
 
 ## What Sabi does
 
